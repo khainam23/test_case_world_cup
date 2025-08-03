@@ -8,7 +8,6 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TeamTest {
-
     private List<Player> validPlayers;
     private List<String> validAssistants;
 
@@ -16,7 +15,7 @@ class TeamTest {
     void setUp() {
         validPlayers = new ArrayList<>();
         for (int i = 1; i <= 22; i++) {
-            validPlayers.add(new Player("Player" + i, i, "Midfielder", "Japan"));
+            validPlayers.add(new Player("Player" + i, i, "Midfielder"));
         }
         validAssistants = Arrays.asList("A1", "A2", "A3");
     }
@@ -233,7 +232,7 @@ class TeamTest {
     @Test
     void TeamAddStartingPlayer_ThemCauThuChinh_TangKichThuoc() {
         Team team = new Team("Denmark", "Europe", "Coach D", validAssistants, "Medic D", validPlayers, false);
-        Player newPlayer = new Player("New Player", 99, "FW", "Denmark");
+        Player newPlayer = new Player("New Player", 99, "FW");
         
         int initialSize = team.getStartingPlayers().size();
         team.addStartingPlayer(newPlayer);
@@ -245,7 +244,7 @@ class TeamTest {
     @Test
     void TeamAddSubstitutePlayer_ThemCauThuDuBi_TangKichThuoc() {
         Team team = new Team("Sweden", "Europe", "Coach S", validAssistants, "Medic S", validPlayers, false);
-        Player newPlayer = new Player("Sub Player", 88, "MF", "Sweden");
+        Player newPlayer = new Player("Sub Player", 88, "MF");
         
         int initialSize = team.getSubstitutePlayers().size();
         team.addSubstitutePlayer(newPlayer);
@@ -258,8 +257,8 @@ class TeamTest {
     void testSetStartingPlayers_NewList_ShouldReplace() {
         Team team = new Team("Norway", "Europe", "Coach N", validAssistants, "Medic N", validPlayers, false);
         List<Player> newStarting = Arrays.asList(
-            new Player("Player A", 1, "GK", "Norway"),
-            new Player("Player B", 2, "DF", "Norway")
+            new Player("Player A", 1, "GK"),
+            new Player("Player B", 2, "DF")
         );
         
         team.setStartingPlayers(newStarting);
@@ -271,8 +270,8 @@ class TeamTest {
     void testSetSubstitutePlayers_NewList_ShouldReplace() {
         Team team = new Team("Finland", "Europe", "Coach F", validAssistants, "Medic F", validPlayers, false);
         List<Player> newSubs = Arrays.asList(
-            new Player("Sub A", 12, "MF", "Finland"),
-            new Player("Sub B", 13, "FW", "Finland")
+            new Player("Sub A", 12, "MF"),
+            new Player("Sub B", 13, "FW")
         );
         
         team.setSubstitutePlayers(newSubs);
@@ -315,7 +314,7 @@ class TeamTest {
     void TeamConstructor_Dung22CauThu_KhoiTaoThanhCong() {
         List<Player> exactly22 = new ArrayList<>();
         for (int i = 1; i <= 22; i++) {
-            exactly22.add(new Player("Player" + i, i, "MF", "TestTeam"));
+            exactly22.add(new Player("Player" + i, i, "MF"));
         }
         
         Team team = new Team("TestTeam", "Asia", "Coach", validAssistants, "Medic", exactly22, false);
@@ -326,7 +325,7 @@ class TeamTest {
     void TeamConstructor_NhieuCauThu30_KhoiTaoThanhCong() {
         List<Player> manyPlayers = new ArrayList<>();
         for (int i = 1; i <= 30; i++) {
-            manyPlayers.add(new Player("Player" + i, i, "MF", "BigTeam"));
+            manyPlayers.add(new Player("Player" + i, i, "MF"));
         }
         
         Team team = new Team("BigTeam", "Asia", "Coach", validAssistants, "Medic", manyPlayers, false);
@@ -404,7 +403,7 @@ class TeamTest {
         
         // Modify original lists
         originalAssistants.add("A3");
-        originalPlayers.add(new Player("Extra", 99, "FW", "ImmutableTest"));
+        originalPlayers.add(new Player("Extra", 99, "FW"));
         
         // Team should not be affected
         assertEquals(2, team.getAssistantCoaches().size());
@@ -463,8 +462,8 @@ class TeamTest {
     void testPlayerListsIndependence_ModifyingOneShouldNotAffectOther() {
         Team team = new Team("Independence", "Asia", "Coach", validAssistants, "Medic", validPlayers, false);
         
-        Player startingPlayer = new Player("Starting", 1, "GK", "Independence");
-        Player subPlayer = new Player("Sub", 12, "FW", "Independence");
+        Player startingPlayer = new Player("Starting", 1, "GK");
+        Player subPlayer = new Player("Sub", 12, "FW");
         
         team.addStartingPlayer(startingPlayer);
         team.addSubstitutePlayer(subPlayer);
@@ -473,7 +472,7 @@ class TeamTest {
         int subSize = team.getSubstitutePlayers().size();
         
         // Adding to one list shouldn't affect the other
-        team.addStartingPlayer(new Player("Another Starting", 2, "DF", "Independence"));
+        team.addStartingPlayer(new Player("Another Starting", 2, "DF"));
         
         assertEquals(startingSize + 1, team.getStartingPlayers().size());
         assertEquals(subSize, team.getSubstitutePlayers().size());

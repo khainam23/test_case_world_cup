@@ -24,6 +24,20 @@
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
+    
+    <!-- SQLite JDBC Driver -->
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>3.44.1.0</version>
+    </dependency>
+    
+    <!-- JSON processing -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.15.2</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -45,6 +59,14 @@
         <version>3.2.5</version>
         <configuration>
           <useModulePath>false</useModulePath>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>15</source>
+          <target>15</target>
         </configuration>
       </plugin>
     </plugins>

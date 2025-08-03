@@ -25,7 +25,7 @@ public class Substitution {
             throw new IllegalArgumentException("Cầu thủ ra không thuộc danh sách thi đấu chính");
         }
 
-        if (!playerIn.getTeamName().equals(team.getName()) || !playerOut.getTeamName().equals(team.getName())) {
+        if (!team.isContainPlayer(playerIn) || !team.isContainPlayer(playerOut)) {
             throw new IllegalArgumentException("Cầu thủ không thuộc đội bóng");
         }
 
@@ -51,7 +51,7 @@ public class Substitution {
         team.getStartingPlayers().add(playerIn);
         team.getSubstitutePlayers().add(playerOut);
 
-        match.addSubstitution(this);
+        match.addSubstitutionDirect(this);
     }
 
     public Player getInPlayer() {

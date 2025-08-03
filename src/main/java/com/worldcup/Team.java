@@ -27,8 +27,8 @@ public class Team {
             throw new IllegalArgumentException("Tối đa 3 trợ lý huấn luyện viên.");
         }
 
-        if (players.size() < 22) {
-            throw new IllegalArgumentException("Đội bóng phải có ít nhất 22 cầu thủ.");
+        if (players.size() > 22) {
+            throw new IllegalArgumentException("Đội bóng có tối đa 22 cầu thủ.");
         }
 
         this.name = name;
@@ -46,17 +46,51 @@ public class Team {
     }
 
     public Team(String name, String region, String coach, List<String> assistantCoaches,
-            String medicalStaff, List<Player> startingPlayers, List<Player> substitutePlayers, boolean isHost) {
-    this.name = name;
-    this.region = region;
-    this.coach = coach;
-    this.assistantCoaches = new ArrayList<>(assistantCoaches);
-    this.medicalStaff = medicalStaff;
-    this.startingPlayers = new ArrayList<>(startingPlayers);
-    this.substitutePlayers = new ArrayList<>(substitutePlayers);
-    this.isHost = isHost;
-}
+                String medicalStaff, List<Player> startingPlayers, List<Player> substitutePlayers, boolean isHost) {
+        
+        // Validation
+        if (assistantCoaches.size() > 3) {
+            throw new IllegalArgumentException("Tối đa 3 trợ lý huấn luyện viên.");
+        }
+        
+        if (startingPlayers.size() != 11) {
+            throw new IllegalArgumentException("Đội hình chính thức phải có đúng 11 cầu thủ.");
+        }
+        
+        if (substitutePlayers.size() > 11) {
+            throw new IllegalArgumentException("Đội hình dự bị có tối đa 11 cầu thủ.");
+        }
+        
+        if (startingPlayers.size() + substitutePlayers.size() > 22) {
+            throw new IllegalArgumentException("Tổng số cầu thủ không được vượt quá 22.");
+        }
+        
+        this.name = name;
+        this.region = region;
+        this.coach = coach;
+        this.assistantCoaches = new ArrayList<>(assistantCoaches);
+        this.medicalStaff = medicalStaff;
+        this.startingPlayers = new ArrayList<>(startingPlayers);
+        this.substitutePlayers = new ArrayList<>(substitutePlayers);
+        this.isHost = isHost;
+        
+        // Khởi tạo players list bằng cách kết hợp startingPlayers và substitutePlayers
+        this.players = new ArrayList<>();
+        this.players.addAll(startingPlayers);
+        this.players.addAll(substitutePlayers);
+        
+        // Khởi tạo các field khác
+        this.points = 0;
+        this.goalDifference = 0;
+        this.yellowCards = 0;
+        this.redCards = 0;
+        this.substitutionCount = 0;
+    }
 
+
+    public boolean isContainPlayer(Player player) {
+        return players.contains(player);
+    }
 
     // --- Getters ---
 

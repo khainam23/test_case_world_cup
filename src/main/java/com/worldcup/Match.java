@@ -255,6 +255,10 @@ public class Match {
     public List<Substitution> getSubstitutions() {
         return Collections.unmodifiableList(substitutions);
     }
+    
+    public void addSubstitutionDirect(Substitution substitution) {
+        substitutions.add(substitution);
+    }
 
     public int getRegularHalfMinutes() {
         return regularHalfMinutes;

@@ -19,15 +19,15 @@ public class GoalTest {
     @BeforeEach
     public void setup() {
         // Tạo cầu thủ
-        p1 = new Player("Mbappe", 10, "Forward", "France");
-        p2 = new Player("Griezmann", 7, "Midfielder", "France");
-        p3 = new Player("Giroud", 9, "Forward", "France");
-        p4 = new Player("Benzema", 19, "Forward", "France");
-        p5 = new Player("Pogba", 6, "Midfielder", "France");
+        p1 = new Player("Mbappe", 10, "Forward");
+        p2 = new Player("Griezmann", 7, "Midfielder");
+        p3 = new Player("Giroud", 9, "Forward");
+        p4 = new Player("Benzema", 19, "Forward");
+        p5 = new Player("Pogba", 6, "Midfielder");
 
         // Tạo danh sách cầu thủ cho đội
-        List<Player> playersA = generatePlayers(22, "France");
-        List<Player> playersB = generatePlayers(22, "Brazil");
+        List<Player> playersA = generatePlayers(22);
+        List<Player> playersB = generatePlayers(22);
         
         teamA = new Team("France", "Europe", "Coach A", Arrays.asList("A1", "A2"), "Doctor A", playersA, false);
         teamB = new Team("Brazil", "South America", "Coach B", Arrays.asList("B1", "B2"), "Doctor B", playersB, false);
@@ -41,10 +41,10 @@ public class GoalTest {
         match = new Match(teamA, teamB, startingPlayersA, substitutePlayersA, startingPlayersB, substitutePlayersB, false);
     }
 
-    private List<Player> generatePlayers(int count, String teamName) {
+    private List<Player> generatePlayers(int count) {
         List<Player> players = new java.util.ArrayList<>();
         for (int i = 1; i <= count; i++) {
-            players.add(new Player("Player" + i, i, "Position" + (i % 4), teamName));
+            players.add(new Player("Player" + i, i, "Position" + (i % 4)));
         }
         return players;
     }
@@ -56,7 +56,7 @@ public class GoalTest {
     public void GoalConstructor_TatCaThamSoHopLe_KhoiTaoThanhCong() {
         Goal goal = new Goal(p1, teamA, 45, match);
         
-        assertEquals(p1, goal.getScorer());
+        assertEquals(p1, goal.getPlayer());
         assertEquals(teamA, goal.getTeam());
         assertEquals(45, goal.getMinute());
         assertEquals(match, goal.getMatch());
@@ -225,7 +225,7 @@ public class GoalTest {
         Goal goal = new Goal(p1, teamA, 45, match);
         
         // Kiểm tra tất cả thuộc tính được gán đúng
-        assertEquals(p1, goal.getScorer());
+        assertEquals(p1, goal.getPlayer());
         assertEquals(teamA, goal.getTeam());
         assertEquals(45, goal.getMinute());
         assertEquals(match, goal.getMatch());
@@ -237,9 +237,9 @@ public class GoalTest {
     // ========== TEST CÁC PHƯƠNG THỨC GETTER ==========
 
     @Test
-    public void GetScorer_GoiTrenGoalHopLe_TraVePlayer() {
+    public void getPlayer_GoiTrenGoalHopLe_TraVePlayer() {
         Goal goal = new Goal(p2, teamA, 30, match);
-        assertEquals(p2, goal.getScorer());
+        assertEquals(p2, goal.getPlayer());
     }
 
     @Test
@@ -311,8 +311,8 @@ public class GoalTest {
         Goal goal1 = new Goal(p1, teamA, 10, match);
         Goal goal2 = new Goal(p2, teamA, 20, match);
         
-        assertEquals(p1, goal1.getScorer());
-        assertEquals(p2, goal2.getScorer());
+        assertEquals(p1, goal1.getPlayer());
+        assertEquals(p2, goal2.getPlayer());
     }
 
     @Test
@@ -327,10 +327,10 @@ public class GoalTest {
     // ========== TEST TÍNH NHẤT QUÁN CỦA GETTER VÀ CONSTRUCTOR ==========
 
     @Test
-    public void GetPlayerVaGetScorer_CungGoal_TraVeCungKetQua() {
+    public void GetPlayerVagetPlayer_CungGoal_TraVeCungKetQua() {
         Goal goal = new Goal(p1, teamA, 45, match);
-        assertEquals(goal.getScorer(), goal.getPlayer());
-        assertSame(goal.getScorer(), goal.getPlayer());
+        assertEquals(goal.getPlayer(), goal.getPlayer());
+        assertSame(goal.getPlayer(), goal.getPlayer());
     }
 
     // ========== TEST CÁC GIÁ TRỊ BIÊN KHÁC ==========
@@ -358,12 +358,12 @@ public class GoalTest {
         Goal goal = new Goal(p1, teamA, 45, match);
         
         // Các getter phải trả về cùng giá trị
-        Player originalScorer = goal.getScorer();
+        Player originalScorer = goal.getPlayer();
         Team originalTeam = goal.getTeam();
         int originalMinute = goal.getMinute();
         Match originalMatch = goal.getMatch();
         
-        assertEquals(originalScorer, goal.getScorer());
+        assertEquals(originalScorer, goal.getPlayer());
         assertEquals(originalTeam, goal.getTeam());
         assertEquals(originalMinute, goal.getMinute());
         assertEquals(originalMatch, goal.getMatch());

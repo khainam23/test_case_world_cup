@@ -127,9 +127,9 @@ public class DataGenerator {
             usedNumbers.add(i);
         }
         
-        // Generate 12 substitute players (positions 12-23)
-        for (int i = 0; i < 12; i++) {
-            int jerseyNumber = generateUniqueJerseyNumber(usedNumbers, 12, 23);
+        // Generate 11 substitute players (positions 12-22)
+        for (int i = 0; i < 11; i++) {
+            int jerseyNumber = generateUniqueJerseyNumber(usedNumbers, 12, 22);
             String name = getRandomName();
             String position = getRandomPosition();
             

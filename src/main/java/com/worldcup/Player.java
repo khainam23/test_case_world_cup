@@ -1,20 +1,17 @@
 package com.worldcup;
 
 public class Player {
-
     private String name;
     private int number;
     private String position;
-    private String teamName;
     private int goals;
     private int yellowCards;
     private boolean redCard;
 
-    public Player(String name, int number, String position, String teamName) {
+    public Player(String name, int number, String position) {
         this.name = name;
         this.number = number;
         this.position = position;
-        this.teamName = teamName;
         this.goals = 0;
         this.yellowCards = 0;
         this.redCard = false;
@@ -59,12 +56,13 @@ public class Player {
         return number;
     }
 
-    public String getPosition() {
-        return position;
+    // Alias method for jersey number (commonly used in football)
+    public int getJerseyNumber() {
+        return number;
     }
 
-    public String getTeamName() {
-        return teamName;
+    public String getPosition() {
+        return position;
     }
 
     public int getGoals() {
@@ -78,5 +76,49 @@ public class Player {
     public boolean hasRedCard() {
         return redCard;
     }
-    
+
+    // Method to get red card count (0 or 1)
+    public int getRedCards() {
+        return redCard ? 1 : 0;
+    }
+
+    // Setters for database operations
+    public void setGoals(int goals) {
+        this.goals = goals;
+    }
+
+    public void setYellowCards(int yellowCards) {
+        this.yellowCards = yellowCards;
+    }
+
+    public void setRedCard(boolean redCard) {
+        this.redCard = redCard;
+    }
+
+    @Override
+    public String toString() {
+        return "Player{" +
+                "name='" + name + '\'' +
+                ", number=" + number +
+                ", position='" + position + '\'' +
+                ", goals=" + goals +
+                ", yellowCards=" + yellowCards +
+                ", redCard=" + redCard +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Player player = (Player) obj;
+        return number == player.number && 
+               name.equals(player.name) && 
+               position.equals(player.position);
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode() + number * 31 + position.hashCode();
+    }
 }
