@@ -1,5 +1,6 @@
 package com.worldcup;
 
+import com.worldcup.model.Player;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

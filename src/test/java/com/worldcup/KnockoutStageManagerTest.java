@@ -1,5 +1,6 @@
 package com.worldcup;
 
+import com.worldcup.model.KnockoutStageManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

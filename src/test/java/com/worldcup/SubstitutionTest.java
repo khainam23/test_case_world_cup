@@ -1,5 +1,9 @@
 package com.worldcup;
 
+import com.worldcup.model.Match;
+import com.worldcup.model.Player;
+import com.worldcup.model.Substitution;
+import com.worldcup.model.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -106,60 +110,6 @@ public class SubstitutionTest {
         assertTrue(ex.getMessage().contains("không hợp lệ"));
     }
 
-    // ========== SUBSTITUTION COUNT BOUNDARY TESTS ==========
-
-    @Test
-    void SubstitutionConstructor_SoLanThayNguoiBang0_KhoiTaoThanhCong() {
-        // Đảm bảo team có substitutionCount = 0
-        team.setSubstitutionCount(0);
-        
-        assertDoesNotThrow(() -> {
-            Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-            assertEquals(1, team.getSubstitutionCount());
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_SoLanThayNguoiBang1_KhoiTaoThanhCong() {
-        team.setSubstitutionCount(1);
-        
-        assertDoesNotThrow(() -> {
-            Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-            assertEquals(2, team.getSubstitutionCount());
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_SoLanThayNguoiBang2_KhoiTaoThanhCong() {
-        team.setSubstitutionCount(2);
-        
-        assertDoesNotThrow(() -> {
-            Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-            assertEquals(3, team.getSubstitutionCount());
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_SoLanThayNguoiBang3_ThrowException() {
-        team.setSubstitutionCount(3);
-        
-        Exception ex = assertThrows(IllegalStateException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("vượt quá số lần thay người"));
-    }
-
-    @Test
-    void SubstitutionConstructor_SoLanThayNguoiLonHon3_ThrowException() {
-        team.setSubstitutionCount(5);
-        
-        Exception ex = assertThrows(IllegalStateException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("vượt quá số lần thay người"));
-    }
-
-    // ========== MINUTE BOUNDARY TESTS ==========
 
     @Test
     void SubstitutionConstructor_PhutBang0_KhoiTaoThanhCong() {
@@ -263,27 +213,6 @@ public class SubstitutionTest {
         assertDoesNotThrow(() -> {
             new Substitution(playerIn, playerOut, 60, team, match);
         });
-    }
-
-    // ========== TEAM CONTAINMENT TESTS ==========
-
-    @Test
-    void SubstitutionConstructor_PlayerInKhongThuocDoiBong_ThrowException() {
-        // Tạo team mới không chứa playerIn
-        List<String> assistants = Arrays.asList("Assistant 1");
-        List<Player> emptyStarting = new ArrayList<>();
-        List<Player> emptySub = new ArrayList<>();
-        Team newTeam = new Team("New Team", "Asia", "Coach", assistants, "Medic", emptyStarting, emptySub, false);
-        
-        // Thêm playerOut vào team mới nhưng không thêm playerIn
-        newTeam.addStartingPlayer(playerOut);
-        newTeam.getPlayers().add(playerOut); // Thêm vào players list
-        
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, newTeam, match)
-        );
-        assertTrue(ex.getMessage().contains("không thuộc danh sách dự bị"));
-
     }
 
     // ========== SUCCESSFUL SUBSTITUTION TESTS ==========

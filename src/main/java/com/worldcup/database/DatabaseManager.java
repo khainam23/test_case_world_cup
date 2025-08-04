@@ -30,19 +30,8 @@ public class DatabaseManager {
                 coach TEXT NOT NULL,
                 medical_staff TEXT NOT NULL,
                 is_host BOOLEAN DEFAULT FALSE,
-                points INTEGER DEFAULT 0,
-                goal_difference INTEGER DEFAULT 0,
-                goals_for INTEGER DEFAULT 0,
-                goals_against INTEGER DEFAULT 0,
-                wins INTEGER DEFAULT 0,
-                draws INTEGER DEFAULT 0,
-                losses INTEGER DEFAULT 0,
-                yellow_cards INTEGER DEFAULT 0,
-                red_cards INTEGER DEFAULT 0,
-                substitution_count INTEGER DEFAULT 0,
                 group_id INTEGER,
                 tournament_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
                 UNIQUE(name, tournament_id)
             )
@@ -60,10 +49,7 @@ public class DatabaseManager {
                 yellow_cards INTEGER DEFAULT 0,
                 red_cards INTEGER DEFAULT 0,
                 goals INTEGER DEFAULT 0,
-                assists INTEGER DEFAULT 0,
-                minutes_played INTEGER DEFAULT 0,
                 is_eligible BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (team_id) REFERENCES teams(id),
                 UNIQUE(team_id, jersey_number)
             )
@@ -75,7 +61,6 @@ public class DatabaseManager {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 team_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (team_id) REFERENCES teams(id)
             )
         """;
@@ -86,7 +71,6 @@ public class DatabaseManager {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 tournament_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
                 UNIQUE(name, tournament_id)
             )
@@ -101,18 +85,11 @@ public class DatabaseManager {
                 team_a_score INTEGER DEFAULT 0,
                 team_b_score INTEGER DEFAULT 0,
                 match_type TEXT NOT NULL, -- 'GROUP', 'ROUND_16', 'QUARTER', 'SEMI', 'FINAL', 'THIRD_PLACE'
-                match_date TIMESTAMP,
+                match_date TEXT, -- Format: yyyy/mm/dd
                 venue TEXT,
                 referee TEXT,
-                status TEXT DEFAULT 'SCHEDULED', -- 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED'
-                winner_id INTEGER,
-                group_id INTEGER,
-                round_number INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (team_a_id) REFERENCES teams(id),
-                FOREIGN KEY (team_b_id) REFERENCES teams(id),
-                FOREIGN KEY (winner_id) REFERENCES teams(id),
-                FOREIGN KEY (group_id) REFERENCES groups(id)
+                FOREIGN KEY (team_b_id) REFERENCES teams(id)
             )
         """;
 
@@ -125,12 +102,9 @@ public class DatabaseManager {
                 team_id INTEGER NOT NULL,
                 minute INTEGER NOT NULL,
                 goal_type TEXT DEFAULT 'REGULAR', -- 'REGULAR', 'PENALTY', 'OWN_GOAL', 'FREE_KICK'
-                assist_player_id INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (match_id) REFERENCES matches(id),
                 FOREIGN KEY (player_id) REFERENCES players(id),
-                FOREIGN KEY (team_id) REFERENCES teams(id),
-                FOREIGN KEY (assist_player_id) REFERENCES players(id)
+                FOREIGN KEY (team_id) REFERENCES teams(id)
             )
         """;
 
@@ -143,7 +117,6 @@ public class DatabaseManager {
                 player_in_id INTEGER NOT NULL,
                 player_out_id INTEGER NOT NULL,
                 minute INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (match_id) REFERENCES matches(id),
                 FOREIGN KEY (team_id) REFERENCES teams(id),
                 FOREIGN KEY (player_in_id) REFERENCES players(id),
@@ -160,8 +133,6 @@ public class DatabaseManager {
                 team_id INTEGER NOT NULL,
                 card_type TEXT NOT NULL, -- 'YELLOW', 'RED'
                 minute INTEGER NOT NULL,
-                reason TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (match_id) REFERENCES matches(id),
                 FOREIGN KEY (player_id) REFERENCES players(id),
                 FOREIGN KEY (team_id) REFERENCES teams(id)
@@ -176,15 +147,7 @@ public class DatabaseManager {
                 year INTEGER NOT NULL,
                 host_country TEXT NOT NULL,
                 start_date DATE,
-                end_date DATE,
-                champion_id INTEGER,
-                runner_up_id INTEGER,
-                third_place_id INTEGER,
-                status TEXT DEFAULT 'PREPARING', -- 'PREPARING', 'GROUP_STAGE', 'KNOCKOUT', 'COMPLETED'
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (champion_id) REFERENCES teams(id),
-                FOREIGN KEY (runner_up_id) REFERENCES teams(id),
-                FOREIGN KEY (third_place_id) REFERENCES teams(id)
+                end_date DATE
             )
         """;
 
@@ -200,9 +163,16 @@ public class DatabaseManager {
                 total_substitutions INTEGER DEFAULT 0,
                 top_scorer_id INTEGER,
                 top_scorer_goals INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                champion_id INTEGER,
+                runner_up_id INTEGER,
+                third_place_id_01 INTEGER,
+                third_place_id_02 INTEGER,
                 FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
-                FOREIGN KEY (top_scorer_id) REFERENCES players(id)
+                FOREIGN KEY (top_scorer_id) REFERENCES players(id),
+                FOREIGN KEY (champion_id) REFERENCES teams(id),
+                FOREIGN KEY (runner_up_id) REFERENCES teams(id),
+                FOREIGN KEY (third_place_id_01) REFERENCES teams(id),
+                FOREIGN KEY (third_place_id_02) REFERENCES teams(id)
             )
         """;
 
@@ -289,6 +259,317 @@ public class DatabaseManager {
                 return; // Let initializeTables() handle creating new tables
             }
             
+            // Migration: Remove round_number column from matches table
+            if (tableExists("matches")) {
+                // Check if round_number column exists
+                boolean hasRoundNumber = false;
+                ResultSet rs = stmt.executeQuery("PRAGMA table_info(matches)");
+                while (rs.next()) {
+                    if ("round_number".equals(rs.getString("name"))) {
+                        hasRoundNumber = true;
+                        break;
+                    }
+                }
+                rs.close();
+                
+                if (hasRoundNumber) {
+                    try {
+                        System.out.println("Removing round_number column from matches table...");
+                        
+                        // Disable foreign key constraints temporarily
+                        stmt.execute("PRAGMA foreign_keys = OFF");
+                        
+                        // Create temporary table without round_number column
+                        stmt.execute("""
+                            CREATE TABLE matches_temp (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                team_a_id INTEGER NOT NULL,
+                                team_b_id INTEGER NOT NULL,
+                                team_a_score INTEGER DEFAULT 0,
+                                team_b_score INTEGER DEFAULT 0,
+                                match_type TEXT NOT NULL,
+                                match_date TEXT,
+                                venue TEXT,
+                                referee TEXT,
+                                FOREIGN KEY (team_a_id) REFERENCES teams(id),
+                                FOREIGN KEY (team_b_id) REFERENCES teams(id)
+                            )
+                        """);
+                        
+                        // Copy data from old table to new table (excluding round_number and status)
+                        stmt.execute("""
+                            INSERT INTO matches_temp (id, team_a_id, team_b_id, team_a_score, team_b_score, 
+                                                    match_type, match_date, venue, referee)
+                            SELECT id, team_a_id, team_b_id, team_a_score, team_b_score, 
+                                   match_type, match_date, venue, referee 
+                            FROM matches
+                        """);
+                        
+                        // Drop old table
+                        stmt.execute("DROP TABLE matches");
+                        
+                        // Rename new table
+                        stmt.execute("ALTER TABLE matches_temp RENAME TO matches");
+                        
+                        // Re-enable foreign key constraints
+                        stmt.execute("PRAGMA foreign_keys = ON");
+                        
+                        System.out.println("Successfully removed round_number column from matches table");
+                    } catch (SQLException e) {
+                        System.out.println("Error removing round_number column: " + e.getMessage());
+                        // Re-enable foreign key constraints in case of error
+                        try {
+                            stmt.execute("PRAGMA foreign_keys = ON");
+                        } catch (SQLException ignored) {}
+                    }
+                }
+            }
+            
+            // Migration: Convert match_date format to yyyy/mm/dd
+            if (tableExists("matches")) {
+                try {
+                    System.out.println("Converting match_date format to yyyy/mm/dd...");
+                    
+                    // Update match_date format to yyyy/mm/dd
+                    int updatedRows = stmt.executeUpdate("""
+                        UPDATE matches 
+                        SET match_date = CASE 
+                            WHEN match_date IS NULL THEN NULL
+                            WHEN match_date LIKE '____-__-__' THEN 
+                                REPLACE(match_date, '-', '/')
+                            WHEN match_date LIKE '____/__/__' THEN 
+                                match_date
+                            WHEN match_date LIKE '____-__-__ __:__:__' THEN 
+                                REPLACE(SUBSTR(match_date, 1, 10), '-', '/')
+                            WHEN match_date LIKE '____/__/__ __:__:__' THEN 
+                                SUBSTR(match_date, 1, 10)
+                            ELSE 
+                                STRFTIME('%Y/%m/%d', match_date)
+                        END
+                        WHERE match_date IS NOT NULL
+                    """);
+                    
+                    if (updatedRows > 0) {
+                        System.out.println("Successfully updated match_date format (" + updatedRows + " rows updated)");
+                    }
+                } catch (SQLException e) {
+                    System.out.println("Error updating match_date format: " + e.getMessage());
+                }
+            }
+            
+            // Migrate champion_id, runner_up_id, third_place_id columns from tournaments to tournament_stats
+            if (tableExists("tournaments") && tableExists("tournament_stats")) {
+                // Kiểm tra xem cột champion_id có tồn tại trong tournaments không
+                boolean hasChampionId = false;
+                ResultSet rs = stmt.executeQuery("PRAGMA table_info(tournaments)");
+                while (rs.next()) {
+                    if ("champion_id".equals(rs.getString("name"))) {
+                        hasChampionId = true;
+                        break;
+                    }
+                }
+                rs.close();
+                
+                // Kiểm tra xem cột champion_id đã tồn tại trong tournament_stats chưa
+                boolean statsHasChampionId = false;
+                rs = stmt.executeQuery("PRAGMA table_info(tournament_stats)");
+                while (rs.next()) {
+                    if ("champion_id".equals(rs.getString("name"))) {
+                        statsHasChampionId = true;
+                        break;
+                    }
+                }
+                rs.close();
+                
+                // Nếu cần chuyển dữ liệu
+                if (hasChampionId && !statsHasChampionId) {
+                    try {
+                        // Thêm các cột vào tournament_stats
+                        stmt.execute("ALTER TABLE tournament_stats ADD COLUMN champion_id INTEGER REFERENCES teams(id)");
+                        stmt.execute("ALTER TABLE tournament_stats ADD COLUMN runner_up_id INTEGER REFERENCES teams(id)");
+                        stmt.execute("ALTER TABLE tournament_stats ADD COLUMN third_place_id INTEGER REFERENCES teams(id)");
+                        
+                        // Sao chép dữ liệu từ tournaments sang tournament_stats
+                        stmt.execute("UPDATE tournament_stats SET " +
+                                    "champion_id = (SELECT champion_id FROM tournaments WHERE tournaments.id = tournament_stats.tournament_id), " +
+                                    "runner_up_id = (SELECT runner_up_id FROM tournaments WHERE tournaments.id = tournament_stats.tournament_id), " +
+                                    "third_place_id = (SELECT third_place_id FROM tournaments WHERE tournaments.id = tournament_stats.tournament_id)");
+                        
+                        System.out.println("Successfully migrated champion_id, runner_up_id, third_place_id from tournaments to tournament_stats");
+                    } catch (SQLException e) {
+                        System.out.println("Error migrating champion data: " + e.getMessage());
+                    }
+                }
+            }
+            
+            // Migration: Remove status column from matches table
+            if (tableExists("matches")) {
+                boolean hasStatus = false;
+                ResultSet rs = stmt.executeQuery("PRAGMA table_info(matches)");
+                while (rs.next()) {
+                    if ("status".equals(rs.getString("name"))) {
+                        hasStatus = true;
+                        break;
+                    }
+                }
+                rs.close();
+                
+                if (hasStatus) {
+                    try {
+                        System.out.println("Removing status column from matches table...");
+                        
+                        // Disable foreign key constraints temporarily
+                        stmt.execute("PRAGMA foreign_keys = OFF");
+                        
+                        // Create temporary table without status column
+                        stmt.execute("""
+                            CREATE TABLE matches_temp_no_status (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                team_a_id INTEGER NOT NULL,
+                                team_b_id INTEGER NOT NULL,
+                                team_a_score INTEGER DEFAULT 0,
+                                team_b_score INTEGER DEFAULT 0,
+                                match_type TEXT NOT NULL,
+                                match_date TEXT,
+                                venue TEXT,
+                                referee TEXT,
+                                FOREIGN KEY (team_a_id) REFERENCES teams(id),
+                                FOREIGN KEY (team_b_id) REFERENCES teams(id)
+                            )
+                        """);
+                        
+                        // Copy data from old table to new table (excluding status)
+                        stmt.execute("""
+                            INSERT INTO matches_temp_no_status (id, team_a_id, team_b_id, team_a_score, team_b_score, 
+                                                              match_type, match_date, venue, referee)
+                            SELECT id, team_a_id, team_b_id, team_a_score, team_b_score, 
+                                   match_type, match_date, venue, referee 
+                            FROM matches
+                        """);
+                        
+                        // Drop old table
+                        stmt.execute("DROP TABLE matches");
+                        
+                        // Rename new table
+                        stmt.execute("ALTER TABLE matches_temp_no_status RENAME TO matches");
+                        
+                        // Re-enable foreign key constraints
+                        stmt.execute("PRAGMA foreign_keys = ON");
+                        
+                        System.out.println("Successfully removed status column from matches table");
+                    } catch (SQLException e) {
+                        System.out.println("Error removing status column: " + e.getMessage());
+                        // Re-enable foreign key constraints in case of error
+                        try {
+                            stmt.execute("PRAGMA foreign_keys = ON");
+                        } catch (SQLException ignored) {}
+                    }
+                }
+            }
+            
+            // Migration: Remove third_place_id column from tournament_stats table
+            if (tableExists("tournament_stats")) {
+                boolean hasThirdPlaceId = false;
+                boolean hasThirdPlaceId01 = false;
+                boolean hasThirdPlaceId02 = false;
+                
+                ResultSet rs = stmt.executeQuery("PRAGMA table_info(tournament_stats)");
+                while (rs.next()) {
+                    String columnName = rs.getString("name");
+                    if ("third_place_id".equals(columnName)) {
+                        hasThirdPlaceId = true;
+                    } else if ("third_place_id_01".equals(columnName)) {
+                        hasThirdPlaceId01 = true;
+                    } else if ("third_place_id_02".equals(columnName)) {
+                        hasThirdPlaceId02 = true;
+                    }
+                }
+                rs.close();
+                
+                // Add missing columns first
+                if (!hasThirdPlaceId01) {
+                    try {
+                        stmt.execute("ALTER TABLE tournament_stats ADD COLUMN third_place_id_01 INTEGER REFERENCES teams(id)");
+                        System.out.println("Added third_place_id_01 column to tournament_stats table");
+                    } catch (SQLException e) {
+                        System.out.println("Error adding third_place_id_01 column: " + e.getMessage());
+                    }
+                }
+                
+                if (!hasThirdPlaceId02) {
+                    try {
+                        stmt.execute("ALTER TABLE tournament_stats ADD COLUMN third_place_id_02 INTEGER REFERENCES teams(id)");
+                        System.out.println("Added third_place_id_02 column to tournament_stats table");
+                    } catch (SQLException e) {
+                        System.out.println("Error adding third_place_id_02 column: " + e.getMessage());
+                    }
+                }
+                
+                // Remove third_place_id column if it exists
+                if (hasThirdPlaceId) {
+                    try {
+                        System.out.println("Removing third_place_id column from tournament_stats table...");
+                        
+                        // Disable foreign key constraints temporarily
+                        stmt.execute("PRAGMA foreign_keys = OFF");
+                        
+                        // Create temporary table without third_place_id column
+                        stmt.execute("""
+                            CREATE TABLE tournament_stats_temp_no_third_place (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                tournament_id INTEGER NOT NULL,
+                                total_goals INTEGER DEFAULT 0,
+                                total_matches INTEGER DEFAULT 0,
+                                total_yellow_cards INTEGER DEFAULT 0,
+                                total_red_cards INTEGER DEFAULT 0,
+                                total_substitutions INTEGER DEFAULT 0,
+                                top_scorer_id INTEGER,
+                                top_scorer_goals INTEGER DEFAULT 0,
+                                champion_id INTEGER,
+                                runner_up_id INTEGER,
+                                third_place_id_01 INTEGER,
+                                third_place_id_02 INTEGER,
+                                FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+                                FOREIGN KEY (top_scorer_id) REFERENCES players(id),
+                                FOREIGN KEY (champion_id) REFERENCES teams(id),
+                                FOREIGN KEY (runner_up_id) REFERENCES teams(id),
+                                FOREIGN KEY (third_place_id_01) REFERENCES teams(id),
+                                FOREIGN KEY (third_place_id_02) REFERENCES teams(id)
+                            )
+                        """);
+                        
+                        // Copy data from old table to new table (excluding third_place_id)
+                        stmt.execute("""
+                            INSERT INTO tournament_stats_temp_no_third_place 
+                            (id, tournament_id, total_goals, total_matches, total_yellow_cards, 
+                             total_red_cards, total_substitutions, top_scorer_id, top_scorer_goals, champion_id, 
+                             runner_up_id, third_place_id_01, third_place_id_02)
+                            SELECT id, tournament_id, total_goals, total_matches, total_yellow_cards, 
+                                   total_red_cards, total_substitutions, NULL, top_scorer_goals, champion_id, 
+                                   runner_up_id, third_place_id_01, third_place_id_02
+                            FROM tournament_stats
+                        """);
+                        
+                        // Drop old table
+                        stmt.execute("DROP TABLE tournament_stats");
+                        
+                        // Rename new table
+                        stmt.execute("ALTER TABLE tournament_stats_temp_no_third_place RENAME TO tournament_stats");
+                        
+                        // Re-enable foreign key constraints
+                        stmt.execute("PRAGMA foreign_keys = ON");
+                        
+                        System.out.println("Successfully removed third_place_id column from tournament_stats table");
+                    } catch (SQLException e) {
+                        System.out.println("Error removing third_place_id column: " + e.getMessage());
+                        // Re-enable foreign key constraints in case of error
+                        try {
+                            stmt.execute("PRAGMA foreign_keys = ON");
+                        } catch (SQLException ignored) {}
+                    }
+                }
+            }
+            
             // Check if tournament_id column exists in teams table
             boolean teamsTableExists = tableExists("teams");
             boolean hasTournamentId = false;
@@ -320,8 +601,8 @@ public class DatabaseManager {
                     // Create a default tournament for existing data
                     System.out.println("Creating default tournament for existing data...");
                     stmt.execute("""
-                        INSERT OR IGNORE INTO tournaments (id, name, year, host_country, start_date, end_date, status)
-                        VALUES (1, 'World Cup Legacy', 2023, 'Unknown', date('now'), date('now', '+30 days'), 'COMPLETED')
+                        INSERT OR IGNORE INTO tournaments (id, name, year, host_country, start_date, end_date)
+                        VALUES (1, 'World Cup Legacy', 2023, 'Unknown', date('now'), date('now', '+30 days'))
                     """);
                     
                     // Backup all existing data to temporary tables
@@ -452,9 +733,9 @@ public class DatabaseManager {
                     System.out.println("Restoring players data...");
                     stmt.execute("""
                         INSERT INTO players (id, name, jersey_number, position, team_id, is_starting,
-                                           yellow_cards, red_cards, goals, assists, minutes_played, is_eligible)
+                                           yellow_cards, red_cards, goals, is_eligible)
                         SELECT id, name, jersey_number, position, team_id, is_starting,
-                               yellow_cards, red_cards, goals, assists, minutes_played, is_eligible
+                               yellow_cards, red_cards, goals, is_eligible
                         FROM players_backup
                     """);
                 } catch (SQLException e) {
@@ -466,11 +747,9 @@ public class DatabaseManager {
                     System.out.println("Restoring matches data...");
                     stmt.execute("""
                         INSERT INTO matches (id, team_a_id, team_b_id, team_a_score, team_b_score,
-                                           match_type, match_date, venue, referee, status, winner_id,
-                                           group_id, round_number)
+                                           match_type, match_date, venue, referee)
                         SELECT id, team_a_id, team_b_id, team_a_score, team_b_score,
-                               match_type, match_date, venue, referee, status, winner_id,
-                               group_id, round_number
+                               match_type, match_date, venue, referee
                         FROM matches_backup
                     """);
                 } catch (SQLException e) {
@@ -548,6 +827,27 @@ public class DatabaseManager {
             throw e;
         }
         
+        // Migration: Add top_scorer_id column to tournament_stats if it doesn't exist
+        try {
+            boolean hasTopScorerId = false;
+            ResultSet rs = stmt.executeQuery("PRAGMA table_info(tournament_stats)");
+            while (rs.next()) {
+                if ("top_scorer_id".equals(rs.getString("name"))) {
+                    hasTopScorerId = true;
+                    break;
+                }
+            }
+            rs.close();
+            
+            if (!hasTopScorerId) {
+                System.out.println("Adding top_scorer_id column to tournament_stats table...");
+                stmt.execute("ALTER TABLE tournament_stats ADD COLUMN top_scorer_id INTEGER REFERENCES players(id)");
+                System.out.println("Successfully added top_scorer_id column to tournament_stats");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error adding top_scorer_id column: " + e.getMessage());
+        }
+        
         stmt.close();
     }
 
@@ -613,8 +913,8 @@ public class DatabaseManager {
     // Method to create a new tournament without affecting existing data
     public int createNewTournament(String name, int year, String hostCountry, String startDate, String endDate) throws SQLException {
         String insertTournament = """
-            INSERT INTO tournaments (name, year, host_country, start_date, end_date, status)
-            VALUES (?, ?, ?, ?, ?, 'PREPARING')
+            INSERT INTO tournaments (name, year, host_country, start_date, end_date)
+            VALUES (?, ?, ?, ?, ?)
         """;
         
         PreparedStatement pstmt = connection.prepareStatement(insertTournament);
@@ -656,5 +956,103 @@ public class DatabaseManager {
         
         stmt.close();
         System.out.println("Cleared data for tournament ID: " + tournamentId);
+    }
+    
+    /**
+     * Cập nhật tournament winners trong tournament_stats
+     * Phương thức tiện ích để cập nhật champion, runner-up và third place
+     */
+    public void updateTournamentWinners(int tournamentId, Integer championId, Integer runnerUpId, Integer thirdPlaceId01, Integer thirdPlaceId02) throws SQLException {
+        // Ensure tournament_stats record exists
+        ensureTournamentStatsRecord(tournamentId);
+        
+        String sql = """
+            UPDATE tournament_stats 
+            SET champion_id = ?, runner_up_id = ?, third_place_id_01 = ?, third_place_id_02 = ?
+            WHERE tournament_id = ?
+        """;
+        
+        PreparedStatement pstmt = connection.prepareStatement(sql);
+        pstmt.setObject(1, championId);
+        pstmt.setObject(2, runnerUpId);
+        pstmt.setObject(3, thirdPlaceId01);
+        pstmt.setObject(4, thirdPlaceId02);
+        pstmt.setInt(5, tournamentId);
+        
+        int rowsUpdated = pstmt.executeUpdate();
+        pstmt.close();
+        
+        if (rowsUpdated > 0) {
+            System.out.println("Successfully updated tournament winners for tournament ID: " + tournamentId);
+            
+            // In thông tin chi tiết
+            if (championId != null) {
+                String championName = getTeamName(championId);
+                System.out.println("   Champion: " + championName + " (ID: " + championId + ")");
+            }
+            if (runnerUpId != null) {
+                String runnerUpName = getTeamName(runnerUpId);
+                System.out.println("   Runner-up: " + runnerUpName + " (ID: " + runnerUpId + ")");
+            }
+            if (thirdPlaceId01 != null) {
+                String thirdPlace01Name = getTeamName(thirdPlaceId01);
+                System.out.println("   Third place 01: " + thirdPlace01Name + " (ID: " + thirdPlaceId01 + ")");
+            }
+            if (thirdPlaceId02 != null) {
+                String thirdPlace02Name = getTeamName(thirdPlaceId02);
+                System.out.println("   Third place 02: " + thirdPlace02Name + " (ID: " + thirdPlaceId02 + ")");
+            }
+        } else {
+            System.out.println("Warning: Could not update tournament winners for tournament ID: " + tournamentId);
+        }
+    }
+    
+    /**
+     * Ensure tournament_stats record exists
+     */
+    private void ensureTournamentStatsRecord(int tournamentId) throws SQLException {
+        String checkSql = "SELECT COUNT(*) FROM tournament_stats WHERE tournament_id = ?";
+        PreparedStatement checkPstmt = connection.prepareStatement(checkSql);
+        checkPstmt.setInt(1, tournamentId);
+        ResultSet rs = checkPstmt.executeQuery();
+        
+        boolean exists = rs.next() && rs.getInt(1) > 0;
+        rs.close();
+        checkPstmt.close();
+        
+        if (!exists) {
+            String insertSql = """
+                INSERT INTO tournament_stats (tournament_id, total_goals, total_matches, 
+                                            total_yellow_cards, total_red_cards, total_substitutions, 
+                                            top_scorer_goals)
+                VALUES (?, 0, 0, 0, 0, 0, 0)
+            """;
+            
+            PreparedStatement insertPstmt = connection.prepareStatement(insertSql);
+            insertPstmt.setInt(1, tournamentId);
+            insertPstmt.executeUpdate();
+            insertPstmt.close();
+            
+            System.out.println("Created tournament_stats record for tournament ID: " + tournamentId);
+        }
+    }
+    
+    /**
+     * Lấy tên team theo ID
+     */
+    private String getTeamName(int teamId) throws SQLException {
+        String sql = "SELECT name FROM teams WHERE id = ?";
+        PreparedStatement pstmt = connection.prepareStatement(sql);
+        pstmt.setInt(1, teamId);
+        ResultSet rs = pstmt.executeQuery();
+        
+        String name = "Unknown";
+        if (rs.next()) {
+            name = rs.getString("name");
+        }
+        
+        rs.close();
+        pstmt.close();
+        return name;
     }
 }

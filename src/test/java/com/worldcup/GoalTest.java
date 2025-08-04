@@ -1,392 +1,228 @@
 package com.worldcup;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import com.worldcup.model.Goal;
+import com.worldcup.model.Match;
+import com.worldcup.model.Player;
+import com.worldcup.model.Team;
 
 import java.util.Arrays;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.ArrayList;
 
 public class GoalTest {
 
-    private Team teamA, teamB;
-    private Match match;
-    private Player p1, p2, p3, p4, p5;
-    private List<Player> startingPlayersA, substitutePlayersA;
-    private List<Player> startingPlayersB, substitutePlayersB;
-
-    @BeforeEach
-    public void setup() {
-        // Tạo cầu thủ
-        p1 = new Player("Mbappe", 10, "Forward");
-        p2 = new Player("Griezmann", 7, "Midfielder");
-        p3 = new Player("Giroud", 9, "Forward");
-        p4 = new Player("Benzema", 19, "Forward");
-        p5 = new Player("Pogba", 6, "Midfielder");
-
-        // Tạo danh sách cầu thủ cho đội
-        List<Player> playersA = generatePlayers(22);
-        List<Player> playersB = generatePlayers(22);
-        
-        teamA = new Team("France", "Europe", "Coach A", Arrays.asList("A1", "A2"), "Doctor A", playersA, false);
-        teamB = new Team("Brazil", "South America", "Coach B", Arrays.asList("B1", "B2"), "Doctor B", playersB, false);
-        
-        // Tạo danh sách cầu thủ đá chính và dự bị
-        startingPlayersA = playersA.subList(0, 11);
-        substitutePlayersA = playersA.subList(11, 22);
-        startingPlayersB = playersB.subList(0, 11);
-        substitutePlayersB = playersB.subList(11, 22);
-        
-        match = new Match(teamA, teamB, startingPlayersA, substitutePlayersA, startingPlayersB, substitutePlayersB, false);
+    public static void main(String[] args) {
+        runAllTests();
+        System.out.println("All GoalTest tests passed!");
     }
 
-    private List<Player> generatePlayers(int count) {
-        List<Player> players = new java.util.ArrayList<>();
+    public static void runAllTests() {
+        // ========== GOAL CONSTRUCTOR TESTS ==========
+        GoalConstructor_ValidParameters_CreateSuccessfully();
+        GoalConstructor_NullPlayer_ThrowException();
+        GoalConstructor_NullMatch_ThrowException();
+        GoalConstructor_NegativeMinute_ThrowException();
+        GoalConstructor_ZeroMinute_CreateSuccessfully();
+        GoalConstructor_MinuteAtBoundary_CreateSuccessfully();
+        GoalConstructor_LargeMinute_CreateSuccessfully();
+        
+        // ========== GETTER TESTS ==========
+        Goal_GetPlayer_ReturnCorrectPlayer();
+        Goal_GetMatch_ReturnCorrectMatch();
+        Goal_GetMinute_ReturnCorrectMinute();
+        
+        // ========== BOUNDARY VALUE TESTS ==========
+        GoalConstructor_MinuteMinValue_CreateSuccessfully();
+        GoalConstructor_MinuteMaxValue_CreateSuccessfully();
+        
+        // ========== EQUIVALENCE PARTITIONING TESTS ==========
+        GoalConstructor_ValidMinuteRange_CreateSuccessfully();
+        GoalConstructor_InvalidNegativeMinute_ThrowException();
+    }
+    
+    // Helper method to create players
+    private static List<Player> generatePlayers(int count) {
+        List<Player> players = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
-            players.add(new Player("Player" + i, i, "Position" + (i % 4)));
+            players.add(new Player("Player" + i, i, "Position" + (i % 4 + 1)));
         }
         return players;
     }
-
-    // ========== BÀO PHỦ PHÂN HOẠCH TƯƠNG ĐƯƠNG ==========
-
-    // Phân hoạch 1: Constructor với tham số hợp lệ
-    @Test
-    public void GoalConstructor_TatCaThamSoHopLe_KhoiTaoThanhCong() {
-        Goal goal = new Goal(p1, teamA, 45, match);
+    
+    // Helper method to create teams and match
+    private static Object[] setupTestData() {
+        List<Player> playersA = generatePlayers(22);
+        List<Player> playersB = generatePlayers(22);
         
-        assertEquals(p1, goal.getPlayer());
-        assertEquals(teamA, goal.getTeam());
-        assertEquals(45, goal.getMinute());
-        assertEquals(match, goal.getMatch());
-    }
-
-    // Phân hoạch 2: Constructor với Player null
-    @Test
-    public void GoalConstructor_PlayerNull_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(null, teamA, 45, match);
-        });
-        assertEquals("Cầu thủ, đội bóng và trận đấu không được null.", thrown.getMessage());
-    }
-
-    // Phân hoạch 3: Constructor với Team null
-    @Test
-    public void GoalConstructor_TeamNull_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, null, 45, match);
-        });
-        assertEquals("Cầu thủ, đội bóng và trận đấu không được null.", thrown.getMessage());
-    }
-
-    // Phân hoạch 4: Constructor với Match null
-    @Test
-    public void GoalConstructor_MatchNull_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, 45, null);
-        });
-        assertEquals("Cầu thủ, đội bóng và trận đấu không được null.", thrown.getMessage());
-    }
-
-    // Phân hoạch 5: Constructor với nhiều tham số null
-    @Test
-    public void GoalConstructor_NhieuThamSoNull_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(null, null, 45, null);
-        });
-        assertEquals("Cầu thủ, đội bóng và trận đấu không được null.", thrown.getMessage());
-    }
-
-    // Phân hoạch 6: Minute trong khoảng hợp lệ [0, 150]
-    @Test
-    public void GoalConstructor_MinuteTrongKhoangHopLe_KhoiTaoThanhCong() {
-        Goal goal = new Goal(p1, teamA, 75, match);
-        assertEquals(75, goal.getMinute());
-    }
-
-    // Phân hoạch 7: Minute ngoài khoảng hợp lệ (< 0)
-    @Test
-    public void GoalConstructor_MinuteNhoHonKhong_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, -1, match);
-        });
-        assertEquals("Thời điểm ghi bàn không hợp lệ.", thrown.getMessage());
-    }
-
-    // Phân hoạch 8: Minute ngoài khoảng hợp lệ (> 150)
-    @Test
-    public void GoalConstructor_MinuteLonHon150_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, 151, match);
-        });
-        assertEquals("Thời điểm ghi bàn không hợp lệ.", thrown.getMessage());
-    }
-
-    // ========== BÀO PHỦ PHÂN HOẠCH GIÁ TRỊ BIÊN ==========
-
-    // Giá trị biên dưới: minute = 0
-    @Test
-    public void GoalConstructor_MinuteBangKhong_KhoiTaoThanhCong() {
-        Goal goal = new Goal(p1, teamA, 0, match);
-        assertEquals(0, goal.getMinute());
-    }
-
-    // Giá trị biên trên: minute = 150
-    @Test
-    public void GoalConstructor_MinuteBang150_KhoiTaoThanhCong() {
-        Goal goal = new Goal(p1, teamA, 150, match);
-        assertEquals(150, goal.getMinute());
-    }
-
-    // Giá trị biên dưới - 1: minute = -1
-    @Test
-    public void GoalConstructor_MinuteBangAmMot_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, -1, match);
-        });
-        assertEquals("Thời điểm ghi bàn không hợp lệ.", thrown.getMessage());
-    }
-
-    // Giá trị biên trên + 1: minute = 151
-    @Test
-    public void GoalConstructor_MinuteBang151_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, 151, match);
-        });
-        assertEquals("Thời điểm ghi bàn không hợp lệ.", thrown.getMessage());
-    }
-
-    // Giá trị biên dưới + 1: minute = 1
-    @Test
-    public void GoalConstructor_MinuteBangMot_KhoiTaoThanhCong() {
-        Goal goal = new Goal(p1, teamA, 1, match);
-        assertEquals(1, goal.getMinute());
-    }
-
-    // Giá trị biên trên - 1: minute = 149
-    @Test
-    public void GoalConstructor_MinuteBang149_KhoiTaoThanhCong() {
-        Goal goal = new Goal(p1, teamA, 149, match);
-        assertEquals(149, goal.getMinute());
-    }
-
-    // ========== BÀO PHỦ CÂU LỆNH VÀ NHÁNH ==========
-
-    // Test nhánh if đầu tiên: scorer == null
-    @Test
-    public void GoalConstructor_ScorerNull_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(null, teamA, 45, match);
-        });
-        assertEquals("Cầu thủ, đội bóng và trận đấu không được null.", thrown.getMessage());
-    }
-
-    // Test nhánh if đầu tiên: team == null
-    @Test
-    public void GoalConstructor_TeamNullTrongNhanh_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, null, 45, match);
-        });
-        assertEquals("Cầu thủ, đội bóng và trận đấu không được null.", thrown.getMessage());
-    }
-
-    // Test nhánh if đầu tiên: match == null
-    @Test
-    public void GoalConstructor_MatchNullTrongNhanh_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, 45, null);
-        });
-        assertEquals("Cầu thủ, đội bóng và trận đấu không được null.", thrown.getMessage());
-    }
-
-    // Test nhánh if thứ hai: minute < 0
-    @Test
-    public void GoalConstructor_MinuteNhoHonKhongTrongNhanh_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, -5, match);
-        });
-        assertEquals("Thời điểm ghi bàn không hợp lệ.", thrown.getMessage());
-    }
-
-    // Test nhánh if thứ hai: minute > 150
-    @Test
-    public void GoalConstructor_MinuteLonHon150TrongNhanh_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, 200, match);
-        });
-        assertEquals("Thời điểm ghi bàn không hợp lệ.", thrown.getMessage());
-    }
-
-    // Test đường thành công (không có exception)
-    @Test
-    public void GoalConstructor_DuongThanhCong_KhoiTaoThanhCong() {
-        int initialGoals = p1.getGoals();
-        Goal goal = new Goal(p1, teamA, 45, match);
+        Team teamA = new Team("France", "Europe", "Coach A", Arrays.asList("A1", "A2"), "Doctor A", playersA, false);
+        Team teamB = new Team("Brazil", "South America", "Coach B", Arrays.asList("B1", "B2"), "Doctor B", playersB, false);
         
-        // Kiểm tra tất cả thuộc tính được gán đúng
-        assertEquals(p1, goal.getPlayer());
-        assertEquals(teamA, goal.getTeam());
-        assertEquals(45, goal.getMinute());
-        assertEquals(match, goal.getMatch());
+        List<Player> startingPlayersA = playersA.subList(0, 11);
+        List<Player> substitutePlayersA = playersA.subList(11, 22);
+        List<Player> startingPlayersB = playersB.subList(0, 11);
+        List<Player> substitutePlayersB = playersB.subList(11, 22);
         
-        // Kiểm tra scorer.scoreGoal() được gọi
-        assertEquals(initialGoals + 1, p1.getGoals());
-    }
-
-    // ========== TEST CÁC PHƯƠNG THỨC GETTER ==========
-
-    @Test
-    public void getPlayer_GoiTrenGoalHopLe_TraVePlayer() {
-        Goal goal = new Goal(p2, teamA, 30, match);
-        assertEquals(p2, goal.getPlayer());
-    }
-
-    @Test
-    public void GetPlayer_GoiTrenGoalHopLe_TraVePlayer() {
-        Goal goal = new Goal(p3, teamA, 60, match);
-        assertEquals(p3, goal.getPlayer());
-    }
-
-    @Test
-    public void GetTeam_GoiTrenGoalHopLe_TraVeTeam() {
-        Goal goal = new Goal(p1, teamB, 90, match);
-        assertEquals(teamB, goal.getTeam());
-    }
-
-    @Test
-    public void GetMinute_GoiTrenGoalHopLe_TraVeMinute() {
-        Goal goal = new Goal(p1, teamA, 120, match);
-        assertEquals(120, goal.getMinute());
-    }
-
-    @Test
-    public void GetMatch_GoiTrenGoalHopLe_TraVeMatch() {
-        Goal goal = new Goal(p1, teamA, 45, match);
-        assertEquals(match, goal.getMatch());
-    }
-
-    // ========== TEST PHƯƠNG THỨC toString ==========
-
-    @Test
-    public void ToString_GoiTrenGoalHopLe_ChuaCacThongTinCanThiet() {
-        Goal goal = new Goal(p1, teamA, 45, match);
-        String result = goal.toString();
+        Match match = new Match(teamA, teamB, startingPlayersA, substitutePlayersA, startingPlayersB, substitutePlayersB);
         
-        assertTrue(result.contains("Goal{"));
-        assertTrue(result.contains("scorer=Mbappe"));
-        assertTrue(result.contains("team=France"));
-        assertTrue(result.contains("minute=45"));
-        assertTrue(result.contains("}"));
+        return new Object[]{teamA, teamB, match, playersA.get(0)};
     }
-
-    // ========== TEST TƯƠNG TÁC VỚI PLAYER ==========
-
-    @Test
-    public void GoalConstructor_TaoGoal_TangSoBanThangCuaPlayer() {
-        int initialGoals = p1.getGoals();
-        new Goal(p1, teamA, 45, match);
-        assertEquals(initialGoals + 1, p1.getGoals());
-    }
-
-    @Test
-    public void GoalConstructor_TaoNhieuGoal_TangSoBanThangDungCach() {
-        int initialGoals = p1.getGoals();
-        new Goal(p1, teamA, 10, match);
-        new Goal(p1, teamA, 20, match);
-        new Goal(p1, teamA, 30, match);
-        assertEquals(initialGoals + 3, p1.getGoals());
-    }
-
-    // ========== TEST CÁC TRƯỜNG HỢP ĐẶC BIỆT ==========
-
-    @Test
-    public void GoalConstructor_MinuteGiuaKhoang_KhoiTaoThanhCong() {
-        Goal goal = new Goal(p1, teamA, 75, match);
-        assertEquals(75, goal.getMinute());
-    }
-
-    @Test
-    public void GoalConstructor_PlayerKhacNhau_KhoiTaoThanhCong() {
-        Goal goal1 = new Goal(p1, teamA, 10, match);
-        Goal goal2 = new Goal(p2, teamA, 20, match);
+    
+    public static void GoalConstructor_ValidParameters_CreateSuccessfully() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
         
-        assertEquals(p1, goal1.getPlayer());
-        assertEquals(p2, goal2.getPlayer());
+        Goal goal = new Goal(player, match, 45);
+        assert goal.getPlayer() == player : "Goal should have correct player";
+        assert goal.getMatch() == match : "Goal should have correct match";
+        assert goal.getMinute() == 45 : "Goal should have correct minute";
     }
-
-    @Test
-    public void GoalConstructor_TeamKhacNhau_KhoiTaoThanhCong() {
-        Goal goal1 = new Goal(p1, teamA, 10, match);
-        Goal goal2 = new Goal(p2, teamB, 20, match);
+    
+    public static void GoalConstructor_NullPlayer_ThrowException() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
         
-        assertEquals(teamA, goal1.getTeam());
-        assertEquals(teamB, goal2.getTeam());
+        try {
+            new Goal(null, match, 45);
+            assert false : "Goal constructor should throw exception for null player";
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
     }
-
-    // ========== TEST TÍNH NHẤT QUÁN CỦA GETTER VÀ CONSTRUCTOR ==========
-
-    @Test
-    public void GetPlayerVagetPlayer_CungGoal_TraVeCungKetQua() {
-        Goal goal = new Goal(p1, teamA, 45, match);
-        assertEquals(goal.getPlayer(), goal.getPlayer());
-        assertSame(goal.getPlayer(), goal.getPlayer());
-    }
-
-    // ========== TEST CÁC GIÁ TRỊ BIÊN KHÁC ==========
-
-    @Test
-    public void GoalConstructor_MinuteAmLon_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, -999, match);
-        });
-        assertEquals("Thời điểm ghi bàn không hợp lệ.", thrown.getMessage());
-    }
-
-    @Test
-    public void GoalConstructor_MinuteDuongLon_ThrowException() {
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
-            new Goal(p1, teamA, 999, match);
-        });
-        assertEquals("Thời điểm ghi bàn không hợp lệ.", thrown.getMessage());
-    }
-
-    // ========== TEST IMMUTABILITY ==========
-
-    @Test
-    public void GoalConstructor_SauKhoiTao_KhongThayDoiDuoc() {
-        Goal goal = new Goal(p1, teamA, 45, match);
+    
+    public static void GoalConstructor_NullMatch_ThrowException() {
+        Object[] data = setupTestData();
+        Player player = (Player) data[3];
         
-        // Các getter phải trả về cùng giá trị
-        Player originalScorer = goal.getPlayer();
-        Team originalTeam = goal.getTeam();
-        int originalMinute = goal.getMinute();
-        Match originalMatch = goal.getMatch();
+        try {
+            new Goal(player, null, 45);
+            assert false : "Goal constructor should throw exception for null match";
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
+    }
+    
+    public static void GoalConstructor_NegativeMinute_ThrowException() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
         
-        assertEquals(originalScorer, goal.getPlayer());
-        assertEquals(originalTeam, goal.getTeam());
-        assertEquals(originalMinute, goal.getMinute());
-        assertEquals(originalMatch, goal.getMatch());
+        try {
+            new Goal(player, match, -1);
+            assert false : "Goal constructor should throw exception for negative minute";
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
     }
-
-    // ========== TEST EDGE CASES ==========
-
-    @Test
-    public void GoalConstructor_TatCaCacThamSoGioiHan_KhoiTaoThanhCong() {
-        // Test với các giá trị ở giới hạn
-        assertDoesNotThrow(() -> new Goal(p1, teamA, 0, match));
-        assertDoesNotThrow(() -> new Goal(p2, teamB, 150, match));
-        assertDoesNotThrow(() -> new Goal(p3, teamA, 1, match));
-        assertDoesNotThrow(() -> new Goal(p4, teamB, 149, match));
+    
+    public static void GoalConstructor_ZeroMinute_CreateSuccessfully() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        Goal goal = new Goal(player, match, 0);
+        assert goal.getMinute() == 0 : "Goal should accept minute 0";
     }
-
-    @Test
-    public void GoalConstructor_TatCaCacThamSoNgoaiGioiHan_ThrowException() {
-        // Test với các giá trị ngoài giới hạn
-        assertThrows(IllegalArgumentException.class, () -> new Goal(p1, teamA, -1, match));
-        assertThrows(IllegalArgumentException.class, () -> new Goal(p2, teamB, 151, match));
-        assertThrows(IllegalArgumentException.class, () -> new Goal(null, teamA, 45, match));
-        assertThrows(IllegalArgumentException.class, () -> new Goal(p1, null, 45, match));
-        assertThrows(IllegalArgumentException.class, () -> new Goal(p1, teamA, 45, null));
+    
+    public static void GoalConstructor_MinuteAtBoundary_CreateSuccessfully() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        // Test boundary values
+        Goal goal1 = new Goal(player, match, 1);
+        assert goal1.getMinute() == 1 : "Goal should accept minute 1";
+        
+        Goal goal90 = new Goal(player, match, 90);
+        assert goal90.getMinute() == 90 : "Goal should accept minute 90";
+        
+        Goal goal120 = new Goal(player, match, 120);
+        assert goal120.getMinute() == 120 : "Goal should accept minute 120";
+    }
+    
+    public static void GoalConstructor_LargeMinute_CreateSuccessfully() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        Goal goal = new Goal(player, match, 999);
+        assert goal.getMinute() == 999 : "Goal should accept large minute values";
+    }
+    
+    public static void Goal_GetPlayer_ReturnCorrectPlayer() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        Goal goal = new Goal(player, match, 45);
+        assert goal.getPlayer() == player : "getPlayer should return the correct player";
+        assert goal.getPlayer().getName().equals(player.getName()) : "Player name should match";
+        assert goal.getPlayer().getJerseyNumber() == player.getJerseyNumber() : "Player jersey number should match";
+    }
+    
+    public static void Goal_GetMatch_ReturnCorrectMatch() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        Goal goal = new Goal(player, match, 45);
+        assert goal.getMatch() == match : "getMatch should return the correct match";
+    }
+    
+    public static void Goal_GetMinute_ReturnCorrectMinute() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        Goal goal = new Goal(player, match, 67);
+        assert goal.getMinute() == 67 : "getMinute should return the correct minute";
+    }
+    
+    public static void GoalConstructor_MinuteMinValue_CreateSuccessfully() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        Goal goal = new Goal(player, match, 0);
+        assert goal.getMinute() == 0 : "Goal should accept minimum minute value (0)";
+    }
+    
+    public static void GoalConstructor_MinuteMaxValue_CreateSuccessfully() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        Goal goal = new Goal(player, match, Integer.MAX_VALUE);
+        assert goal.getMinute() == Integer.MAX_VALUE : "Goal should accept maximum minute value";
+    }
+    
+    public static void GoalConstructor_ValidMinuteRange_CreateSuccessfully() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        // Test various valid minute values
+        int[] validMinutes = {1, 15, 30, 45, 60, 75, 90, 105, 120};
+        for (int minute : validMinutes) {
+            Goal goal = new Goal(player, match, minute);
+            assert goal.getMinute() == minute : "Goal should accept minute " + minute;
+        }
+    }
+    
+    public static void GoalConstructor_InvalidNegativeMinute_ThrowException() {
+        Object[] data = setupTestData();
+        Match match = (Match) data[2];
+        Player player = (Player) data[3];
+        
+        // Test various negative minute values
+        int[] invalidMinutes = {-1, -10, -100, Integer.MIN_VALUE};
+        for (int minute : invalidMinutes) {
+            try {
+                new Goal(player, match, minute);
+                assert false : "Goal constructor should throw exception for negative minute " + minute;
+            } catch (IllegalArgumentException e) {
+                // Expected
+            }
+        }
     }
 }

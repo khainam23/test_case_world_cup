@@ -1,62 +1,57 @@
 package com.worldcup.database;
 
+import com.worldcup.service.TeamService;
+import com.worldcup.service.PlayerService;
+import com.worldcup.service.MatchService;
+import com.worldcup.service.TournamentService;
+import com.worldcup.model.Team;
 import java.sql.*;
 import java.util.*;
 
+/**
+ * Queries class được cập nhật để sử dụng Services thay vì SQL logic
+ * Tuân theo Dependency Inversion Principle
+ */
 public class TournamentQueries {
     private DatabaseManager dbManager;
+    private TeamService teamService;
+    private PlayerService playerService;
+    private MatchService matchService;
+    private TournamentService tournamentService;
 
     public TournamentQueries(DatabaseManager dbManager) {
         this.dbManager = dbManager;
+        this.teamService = new TeamService(dbManager);
+        this.playerService = new PlayerService(dbManager);
+        this.matchService = new MatchService(dbManager);
+        this.tournamentService = new TournamentService(dbManager);
     }
 
-    // Get all teams with their statistics
-    public List<Map<String, Object>> getAllTeamsWithStats() throws SQLException {
-        String sql = """
-            SELECT 
-                t.id,
-                t.name,
-                t.region,
-                t.coach,
-                t.is_host,
-                t.points,
-                t.wins,
-                t.draws,
-                t.losses,
-                t.goals_for,
-                t.goals_against,
-                t.goal_difference,
-                g.name as group_name
-            FROM teams t
-            LEFT JOIN groups g ON t.group_id = g.id
-            ORDER BY t.name
-        """;
-
-        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-        ResultSet rs = pstmt.executeQuery();
-
-        List<Map<String, Object>> teams = new ArrayList<>();
-        while (rs.next()) {
-            Map<String, Object> team = new HashMap<>();
-            team.put("id", rs.getInt("id"));
-            team.put("name", rs.getString("name"));
-            team.put("region", rs.getString("region"));
-            team.put("coach", rs.getString("coach"));
-            team.put("isHost", rs.getBoolean("is_host"));
-            team.put("points", rs.getInt("points"));
-            team.put("wins", rs.getInt("wins"));
-            team.put("draws", rs.getInt("draws"));
-            team.put("losses", rs.getInt("losses"));
-            team.put("goalsFor", rs.getInt("goals_for"));
-            team.put("goalsAgainst", rs.getInt("goals_against"));
-            team.put("goalDifference", rs.getInt("goal_difference"));
-            team.put("groupName", rs.getString("group_name"));
-            teams.add(team);
+    // Get all teams with their statistics - sử dụng TeamService thay vì SQL ORDER BY
+    public List<Map<String, Object>> getAllTeamsWithStats(int tournamentId) throws SQLException {
+        // Lấy teams từ TeamService với thống kê được tính bằng Java
+        List<Team> teams = teamService.getAllTeamsWithCalculatedStats(tournamentId);
+        
+        // Sắp xếp theo tên bằng Java thay vì SQL ORDER BY
+        teams.sort(Comparator.comparing(Team::getName));
+        
+        // Chuyển đổi sang Map format để tương thích với code cũ
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Team team : teams) {
+            Map<String, Object> teamMap = new HashMap<>();
+            teamMap.put("name", team.getName());
+            teamMap.put("region", team.getRegion());
+            teamMap.put("coach", team.getCoach());
+            teamMap.put("isHost", team.isHost());
+            teamMap.put("points", team.getPoints());
+            teamMap.put("goalDifference", team.getGoalDifference());
+            teamMap.put("yellowCards", team.getYellowCards());
+            teamMap.put("redCards", team.getRedCards());
+            // Thêm các thông tin khác nếu cần
+            result.add(teamMap);
         }
-
-        rs.close();
-        pstmt.close();
-        return teams;
+        
+        return result;
     }
 
     // Get all matches with details
@@ -95,7 +90,7 @@ public class TournamentQueries {
             match.put("teamAScore", rs.getInt("team_a_score"));
             match.put("teamBScore", rs.getInt("team_b_score"));
             match.put("matchType", rs.getString("match_type"));
-            match.put("matchDate", rs.getDate("match_date"));
+            match.put("matchDate", rs.getString("match_date"));
             match.put("venue", rs.getString("venue"));
             match.put("referee", rs.getString("referee"));
             match.put("status", rs.getString("status"));
@@ -109,80 +104,42 @@ public class TournamentQueries {
         return matches;
     }
 
-    // Get top scorers
-    public List<Map<String, Object>> getTopScorers(int limit) throws SQLException {
-        String sql = """
-            SELECT 
-                p.name as player_name,
-                t.name as team_name,
-                p.position,
-                COUNT(g.id) as goals
-            FROM players p
-            JOIN teams t ON p.team_id = t.id
-            JOIN goals g ON p.id = g.player_id
-            GROUP BY p.id, p.name, t.name, p.position
-            ORDER BY goals DESC, p.name
-            LIMIT ?
-        """;
-
-        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-        pstmt.setInt(1, limit);
-        ResultSet rs = pstmt.executeQuery();
-
-        List<Map<String, Object>> scorers = new ArrayList<>();
-        while (rs.next()) {
-            Map<String, Object> scorer = new HashMap<>();
-            scorer.put("playerName", rs.getString("player_name"));
-            scorer.put("teamName", rs.getString("team_name"));
-            scorer.put("position", rs.getString("position"));
-            scorer.put("goals", rs.getInt("goals"));
-            scorers.add(scorer);
+    // Get top scorers - sử dụng PlayerService thay vì SQL GROUP BY và ORDER BY
+    public List<Map<String, Object>> getTopScorers(int tournamentId, int limit) throws SQLException {
+        // Sử dụng PlayerService để lấy top scorers với logic Java
+        List<PlayerService.PlayerGoalStats> topScorers = playerService.getTopScorersCalculatedInJava(tournamentId, limit);
+        
+        // Chuyển đổi sang Map format để tương thích với code cũ
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (PlayerService.PlayerGoalStats scorer : topScorers) {
+            Map<String, Object> scorerMap = new HashMap<>();
+            scorerMap.put("playerName", scorer.getPlayerName());
+            scorerMap.put("teamName", scorer.getTeamName());
+            scorerMap.put("position", scorer.getPosition());
+            scorerMap.put("goals", scorer.getGoals());
+            result.add(scorerMap);
         }
-
-        rs.close();
-        pstmt.close();
-        return scorers;
+        
+        return result;
     }
 
-    // Get group standings
-    public List<Map<String, Object>> getGroupStandings(String groupName) throws SQLException {
-        String sql = """
-            SELECT 
-                t.name,
-                t.points,
-                t.wins,
-                t.draws,
-                t.losses,
-                t.goals_for,
-                t.goals_against,
-                t.goal_difference
-            FROM teams t
-            JOIN groups g ON t.group_id = g.id
-            WHERE g.name = ?
-            ORDER BY t.points DESC, t.goal_difference DESC, t.goals_for DESC
-        """;
-
-        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-        pstmt.setString(1, groupName);
-        ResultSet rs = pstmt.executeQuery();
-
-        List<Map<String, Object>> standings = new ArrayList<>();
-        while (rs.next()) {
-            Map<String, Object> team = new HashMap<>();
-            team.put("name", rs.getString("name"));
-            team.put("points", rs.getInt("points"));
-            team.put("wins", rs.getInt("wins"));
-            team.put("draws", rs.getInt("draws"));
-            team.put("losses", rs.getInt("losses"));
-            team.put("goalsFor", rs.getInt("goals_for"));
-            team.put("goalsAgainst", rs.getInt("goals_against"));
-            team.put("goalDifference", rs.getInt("goal_difference"));
-            standings.add(team);
+    // Get group standings - sử dụng TeamService thay vì SQL ORDER BY
+    public List<Map<String, Object>> getGroupStandings(int tournamentId, String groupName) throws SQLException {
+        // Sử dụng TeamService để lấy group standings với sắp xếp bằng Java
+        List<Team> teams = teamService.getTeamsByGroupSorted(tournamentId, groupName);
+        
+        // Chuyển đổi sang Map format để tương thích với code cũ
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Team team : teams) {
+            Map<String, Object> teamMap = new HashMap<>();
+            teamMap.put("name", team.getName());
+            teamMap.put("points", team.getPoints());
+            teamMap.put("goalDifference", team.getGoalDifference());
+            // Lấy thêm thông tin chi tiết từ database nếu cần
+            result.add(teamMap);
         }
-
-        rs.close();
-        pstmt.close();
-        return standings;
+        
+        return result;
     }
 
     // Get match details with events
@@ -220,7 +177,7 @@ public class TournamentQueries {
             matchDetails.put("teamAScore", matchRs.getInt("team_a_score"));
             matchDetails.put("teamBScore", matchRs.getInt("team_b_score"));
             matchDetails.put("matchType", matchRs.getString("match_type"));
-            matchDetails.put("matchDate", matchRs.getDate("match_date"));
+            matchDetails.put("matchDate", matchRs.getString("match_date"));
             matchDetails.put("venue", matchRs.getString("venue"));
             matchDetails.put("referee", matchRs.getString("referee"));
             matchDetails.put("status", matchRs.getString("status"));
@@ -335,7 +292,7 @@ public class TournamentQueries {
                 t.host_country,
                 t.start_date,
                 t.end_date,
-                t.status,
+
                 champion.name as champion_name,
                 runner_up.name as runner_up_name,
                 third_place.name as third_place_name,
@@ -344,13 +301,14 @@ public class TournamentQueries {
                 ts.total_yellow_cards,
                 ts.total_red_cards,
                 ts.total_substitutions,
-                top_scorer.name as top_scorer_name,
-                ts.top_scorer_goals
+                ts.top_scorer_id,
+                ts.top_scorer_goals,
+                top_scorer.name as top_scorer_name
             FROM tournaments t
-            LEFT JOIN teams champion ON t.champion_id = champion.id
-            LEFT JOIN teams runner_up ON t.runner_up_id = runner_up.id
-            LEFT JOIN teams third_place ON t.third_place_id = third_place.id
             LEFT JOIN tournament_stats ts ON t.id = ts.tournament_id
+            LEFT JOIN teams champion ON ts.champion_id = champion.id
+            LEFT JOIN teams runner_up ON ts.runner_up_id = runner_up.id
+            LEFT JOIN teams third_place ON ts.third_place_id_01 = third_place.id
             LEFT JOIN players top_scorer ON ts.top_scorer_id = top_scorer.id
             ORDER BY t.id DESC
             LIMIT 1
@@ -366,7 +324,7 @@ public class TournamentQueries {
             summary.put("hostCountry", rs.getString("host_country"));
             summary.put("startDate", rs.getDate("start_date"));
             summary.put("endDate", rs.getDate("end_date"));
-            summary.put("status", rs.getString("status"));
+
             summary.put("championName", rs.getString("champion_name"));
             summary.put("runnerUpName", rs.getString("runner_up_name"));
             summary.put("thirdPlaceName", rs.getString("third_place_name"));
@@ -375,6 +333,7 @@ public class TournamentQueries {
             summary.put("totalYellowCards", rs.getInt("total_yellow_cards"));
             summary.put("totalRedCards", rs.getInt("total_red_cards"));
             summary.put("totalSubstitutions", rs.getInt("total_substitutions"));
+            summary.put("topScorerId", rs.getInt("top_scorer_id"));
             summary.put("topScorerName", rs.getString("top_scorer_name"));
             summary.put("topScorerGoals", rs.getInt("top_scorer_goals"));
         }
@@ -394,9 +353,7 @@ public class TournamentQueries {
                 p.is_starting,
                 p.yellow_cards,
                 p.red_cards,
-                p.goals,
-                p.assists,
-                p.minutes_played
+                p.goals
             FROM players p
             JOIN teams t ON p.team_id = t.id
             WHERE t.name = ?
@@ -417,8 +374,7 @@ public class TournamentQueries {
             player.put("yellowCards", rs.getInt("yellow_cards"));
             player.put("redCards", rs.getInt("red_cards"));
             player.put("goals", rs.getInt("goals"));
-            player.put("assists", rs.getInt("assists"));
-            player.put("minutesPlayed", rs.getInt("minutes_played"));
+            // assists and minutes_played columns removed
             roster.add(player);
         }
 
@@ -470,7 +426,7 @@ public class TournamentQueries {
             match.put("matchType", rs.getString("match_type"));
             match.put("winnerName", rs.getString("winner_name"));
             match.put("venue", rs.getString("venue"));
-            match.put("matchDate", rs.getDate("match_date"));
+            match.put("matchDate", rs.getString("match_date"));
             knockoutMatches.add(match);
         }
 
