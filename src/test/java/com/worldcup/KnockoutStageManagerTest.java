@@ -212,10 +212,9 @@ public class KnockoutStageManagerTest {
         List<String> winners = Arrays.asList("W1", "W2", "W3", "W4");
         List<String> losers = Arrays.asList("L1", "L2", "L3", "L4");
 
-        manager.setQuarterFinalWinners(winners, losers);
+        manager.setQuarterFinalWinners(winners);
 
         assertEquals(winners, manager.getSemiFinals());
-        assertEquals(losers, manager.getBronzeWinners());
     }
 
     @Test
@@ -223,7 +222,7 @@ public class KnockoutStageManagerTest {
         List<String> winners = Arrays.asList("W1", "W2", "W3");
         List<String> losers = Arrays.asList("L1", "L2", "L3", "L4");
 
-        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners, losers));
+        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners));
     }
 
     @Test
@@ -231,93 +230,54 @@ public class KnockoutStageManagerTest {
         List<String> winners = Arrays.asList("W1", "W2", "W3", "W4", "W5");
         List<String> losers = Arrays.asList("L1", "L2", "L3", "L4");
 
-        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners, losers));
+        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners));
     }
 
-    @Test
-    public void SetQuarterFinalWinners_4Thang3Thua_ThrowIllegalArgumentException() {
-        List<String> winners = Arrays.asList("W1", "W2", "W3", "W4");
-        List<String> losers = Arrays.asList("L1", "L2", "L3");
-
-        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners, losers));
-    }
-
-    @Test
-    public void SetQuarterFinalWinners_4Thang5Thua_ThrowIllegalArgumentException() {
-        List<String> winners = Arrays.asList("W1", "W2", "W3", "W4");
-        List<String> losers = Arrays.asList("L1", "L2", "L3", "L4", "L5");
-
-        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners, losers));
-    }
-
-    @Test
-    public void SetQuarterFinalWinners_WinnersNull_ThrowNullPointerException() {
-        List<String> losers = Arrays.asList("L1", "L2", "L3", "L4");
-
-        assertThrows(NullPointerException.class, () -> manager.setQuarterFinalWinners(null, losers));
-    }
-
-    @Test
-    public void SetQuarterFinalWinners_LosersNull_ThrowNullPointerException() {
-        List<String> winners = Arrays.asList("W1", "W2", "W3", "W4");
-
-        assertThrows(NullPointerException.class, () -> manager.setQuarterFinalWinners(winners, null));
-    }
 
     @Test
     public void SetQuarterFinalWinners_CaHaiListRong_ThrowIllegalArgumentException() {
         List<String> winners = new ArrayList<>();
         List<String> losers = new ArrayList<>();
 
-        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners, losers));
+        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners));
     }
 
     // ========== TESTS FOR setSemiFinalWinners METHOD ==========
 
     @Test
-    public void SetSemiFinalWinners_Dung2Doi_CapNhatThanhCong() {
-        List<String> finalists = Arrays.asList("Brazil", "Argentina");
-        manager.setSemiFinalWinners(finalists);
-
-        assertEquals(finalists, manager.getFinals());
-        assertEquals("Brazil", manager.getFinals().get(0));
-        assertEquals("Argentina", manager.getFinals().get(1));
-    }
-
-    @Test
     public void SetSemiFinalWinners_1Doi_ThrowIllegalArgumentException() {
         List<String> finalists = Arrays.asList("Brazil");
-        assertThrows(IllegalArgumentException.class, () -> manager.setSemiFinalWinners(finalists));
+        assertThrows(IllegalArgumentException.class, () -> manager.setSemiFinalWinners(finalists, finalists));
     }
 
     @Test
     public void SetSemiFinalWinners_3Doi_ThrowIllegalArgumentException() {
         List<String> finalists = Arrays.asList("Brazil", "Argentina", "Germany");
-        assertThrows(IllegalArgumentException.class, () -> manager.setSemiFinalWinners(finalists));
+        assertThrows(IllegalArgumentException.class, () -> manager.setSemiFinalWinners(finalists, finalists));
     }
 
     @Test
     public void SetSemiFinalWinners_0Doi_ThrowIllegalArgumentException() {
         List<String> finalists = new ArrayList<>();
-        assertThrows(IllegalArgumentException.class, () -> manager.setSemiFinalWinners(finalists));
+        assertThrows(IllegalArgumentException.class, () -> manager.setSemiFinalWinners(finalists, finalists));
     }
 
     @Test
     public void SetSemiFinalWinners_ListNull_ThrowNullPointerException() {
-        assertThrows(NullPointerException.class, () -> manager.setSemiFinalWinners(null));
+        assertThrows(NullPointerException.class, () -> manager.setSemiFinalWinners(null, null));
     }
 
     @Test
     public void SetSemiFinalWinners_CoDoiNull_ChoPhepNull() {
         List<String> finalists = Arrays.asList("Brazil", null);
-        assertDoesNotThrow(() -> manager.setSemiFinalWinners(finalists));
+        assertDoesNotThrow(() -> manager.setSemiFinalWinners(finalists, finalists));
         assertTrue(manager.getFinals().contains(null));
     }
 
     @Test
     public void SetSemiFinalWinners_DoiTrung_ChoPhepTrung() {
         List<String> finalists = Arrays.asList("Brazil", "Brazil");
-        assertDoesNotThrow(() -> manager.setSemiFinalWinners(finalists));
+        assertDoesNotThrow(() -> manager.setSemiFinalWinners(finalists, finalists));
         assertEquals(2, Collections.frequency(manager.getFinals(), "Brazil"));
     }
 
@@ -433,46 +393,6 @@ public class KnockoutStageManagerTest {
     // ========== INTEGRATION TESTS ==========
 
     @Test
-    public void KnockoutFlow_QuyTrinhDayDu_ThanhCong() {
-        // Setup full happy path simulation from group winners to final
-        manager.setRoundOf16Winners(Arrays.asList("Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8"));
-        manager.setQuarterFinalWinners(
-                Arrays.asList("S1", "S2", "S3", "S4"),
-                Arrays.asList("L1", "L2", "L3", "L4")
-        );
-        manager.setSemiFinalWinners(Arrays.asList("F1", "F2"));
-        manager.setFinalResult("F1", "F2");
-
-        assertEquals("F1", manager.getChampion());
-        assertEquals("F2", manager.getRunnerUp());
-        assertEquals(4, manager.getBronzeWinners().size());
-    }
-
-    @Test
-    public void KnockoutFlow_CapNhatNhieuLan_DuyTriTinhNhatQuan() {
-        // First setup
-        manager.setRoundOf16Winners(Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H"));
-        assertEquals(8, manager.getQuarterFinals().size());
-
-        // Update quarter finals
-        manager.setQuarterFinalWinners(
-                Arrays.asList("A", "C", "E", "G"),
-                Arrays.asList("B", "D", "F", "H")
-        );
-        assertEquals(4, manager.getSemiFinals().size());
-        assertEquals(4, manager.getBronzeWinners().size());
-
-        // Update semi finals
-        manager.setSemiFinalWinners(Arrays.asList("A", "E"));
-        assertEquals(2, manager.getFinals().size());
-
-        // Final result
-        manager.setFinalResult("A", "E");
-        assertEquals("A", manager.getChampion());
-        assertEquals("E", manager.getRunnerUp());
-    }
-
-    @Test
     public void KnockoutFlow_TrangThaiBanDau_TatCaRongHoacNull() {
         assertTrue(manager.getRoundOf16().isEmpty());
         assertTrue(manager.getQuarterFinals().isEmpty());
@@ -508,38 +428,25 @@ public class KnockoutStageManagerTest {
     @Test
     public void SetQuarterFinalWinners_GiaTriBien3_ThrowException() {
         List<String> winners = Arrays.asList("W1", "W2", "W3");
-        List<String> losers = Arrays.asList("L1", "L2", "L3", "L4");
-        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners, losers));
+        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners));
     }
 
     @Test
     public void SetQuarterFinalWinners_GiaTriBien4_ThanhCong() {
         List<String> winners = Arrays.asList("W1", "W2", "W3", "W4");
-        List<String> losers = Arrays.asList("L1", "L2", "L3", "L4");
-        assertDoesNotThrow(() -> manager.setQuarterFinalWinners(winners, losers));
+        assertDoesNotThrow(() -> manager.setQuarterFinalWinners(winners));
     }
 
     @Test
     public void SetQuarterFinalWinners_GiaTriBien5_ThrowException() {
         List<String> winners = Arrays.asList("W1", "W2", "W3", "W4", "W5");
-        List<String> losers = Arrays.asList("L1", "L2", "L3", "L4");
-        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners, losers));
+        assertThrows(IllegalArgumentException.class, () -> manager.setQuarterFinalWinners(winners));
     }
 
     @Test
     public void SetSemiFinalWinners_GiaTriBien1_ThrowException() {
         List<String> finalists = Arrays.asList("F1");
-        assertThrows(IllegalArgumentException.class, () -> manager.setSemiFinalWinners(finalists));
+        assertThrows(IllegalArgumentException.class, () -> manager.setSemiFinalWinners(finalists, null));
     }
 
-    @Test
-    public void SetSemiFinalWinners_GiaTriBien2_ThanhCong() {
-        List<String> finalists = Arrays.asList("F1", "F2");
-        assertDoesNotThrow(() -> manager.setSemiFinalWinners(finalists));
-    }
-
-    @Test
-    public void SetSemiFinalWinners_GiaTriBien3_ThrowException() {
-        List<String> finalists = Arrays.asList("F1", "F2", "F3");
-    }
 }

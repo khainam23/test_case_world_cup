@@ -16,6 +16,10 @@ public class Player {
     private int assists;
     private int minutesPlayed;
     private boolean isEligible;
+    
+    // Suspension management
+    private boolean suspended;
+    private int suspensionMatches;
 
     public Player(String name, int jerseyNumber, String position) {
         this.name = name;
@@ -28,6 +32,8 @@ public class Player {
         this.minutesPlayed = 0;
         this.isEligible = true;
         this.isStarting = false;
+        this.suspended = false;
+        this.suspensionMatches = 0;
     }
 
     public void scoreGoal() {
@@ -40,6 +46,8 @@ public class Player {
 
     public void receiveRedCard() {
         redCards++;
+        // Automatically suspend player for 1 match when receiving red card
+        setSuspended(true, 1);
     }
 
     public void resetCards() {
@@ -57,7 +65,7 @@ public class Player {
     }
 
     public boolean isPlayerEligible() {
-        return !isSentOff() && isEligible;
+        return !isSentOff() && isEligible && !suspended;
     }
 
     // Getters
@@ -155,6 +163,34 @@ public class Player {
         isEligible = eligible;
     }
     
+    // Suspension management methods
+    public boolean isSuspended() {
+        return suspended;
+    }
+    
+    public void setSuspended(boolean suspended, int matches) {
+        this.suspended = suspended;
+        this.suspensionMatches = suspended ? matches : 0;
+    }
+    
+    public int getSuspensionMatches() {
+        return suspensionMatches;
+    }
+    
+    public void reduceSuspension() {
+        if (suspensionMatches > 0) {
+            suspensionMatches--;
+            if (suspensionMatches == 0) {
+                suspended = false;
+            }
+        }
+    }
+    
+    public void clearSuspension() {
+        suspended = false;
+        suspensionMatches = 0;
+    }
+    
     public void setName(String name) {
         this.name = name;
     }
@@ -189,5 +225,9 @@ public class Player {
     @Override
     public int hashCode() {
         return name.hashCode() + jerseyNumber * 31 + position.hashCode();
+    }
+
+    public int getNumber() {
+        return this.jerseyNumber;
     }
 }

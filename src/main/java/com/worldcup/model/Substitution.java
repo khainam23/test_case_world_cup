@@ -18,20 +18,9 @@ public class Substitution {
             throw new IllegalArgumentException("Thời điểm thay người không hợp lệ");
         }
 
-        if (!team.getSubstitutePlayers().contains(playerIn)) {
-            throw new IllegalArgumentException("Cầu thủ vào không thuộc danh sách dự bị");
-        }
-
-        if (!team.getStartingPlayers().contains(playerOut)) {
-            throw new IllegalArgumentException("Cầu thủ ra không thuộc danh sách thi đấu chính");
-        }
-
-        if (!team.isContainPlayer(playerIn) || !team.isContainPlayer(playerOut)) {
-            throw new IllegalArgumentException("Cầu thủ không thuộc đội bóng");
-        }
-
-        if (!playerIn.isEligible() || !playerOut.isEligible()) {
-            throw new IllegalArgumentException("Cầu thủ không đủ điều kiện thi đấu");
+        // Kiểm tra cơ bản - players phải khác nhau
+        if (playerIn.equals(playerOut)) {
+            throw new IllegalArgumentException("Cầu thủ vào và ra phải khác nhau");
         }
 
         this.playerIn = playerIn;
@@ -40,13 +29,12 @@ public class Substitution {
         this.team = team;
         this.match = match;
 
-        team.getStartingPlayers().remove(playerOut);
-        team.getSubstitutePlayers().remove(playerIn);
-
-        team.getStartingPlayers().add(playerIn);
-        team.getSubstitutePlayers().add(playerOut);
-
-        match.addSubstitutionDirect(this);
+        // Thực hiện thay người trong Match
+        boolean success = match.addSubstitution(this);
+        if (!success) {
+            throw new IllegalArgumentException("Không thể thực hiện thay người: " + 
+                                             playerIn.getName() + " vào thay " + playerOut.getName());
+        }
     }
 
     public Player getInPlayer() {
@@ -78,5 +66,13 @@ public class Substitution {
                 ", team=" + team.getName() +
                 ", match between " + match.getTeamA().getName() + " and " + match.getTeamB().getName() +
                 '}';
+    }
+
+    public void setId(int substitutionId) {
+        id = substitutionId;
+    }
+
+    public int getId() {
+        return id;
     }
 }

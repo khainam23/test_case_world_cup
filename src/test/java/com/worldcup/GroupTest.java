@@ -1,9 +1,9 @@
 package com.worldcup;
 
 import com.worldcup.model.Group;
+import com.worldcup.model.Player;
 import com.worldcup.model.Team;
 import com.worldcup.model.Match;
-import com.worldcup.model.Player;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;

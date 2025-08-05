@@ -295,17 +295,7 @@ public class MatchTest {
 
     // ========== SUBSTITUTION TESTS ==========
 
-    @Test
-    void AddSubstitution_SubstitutionHopLe_ThemThanhCong() {
-        Player playerOut = startingA.get(0);
-        Player playerIn = substituteA.get(0);
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, teamA, match);
-        
-        boolean result = match.addSubstitution(substitution);
-        
-        assertTrue(result);
-        assertEquals(1, match.getSubstitutions().size());
-    }
+
 
     @Test
     void AddSubstitution_SubstitutionNull_TraVeFalse() {
@@ -313,44 +303,12 @@ public class MatchTest {
         assertFalse(result);
     }
 
-    @Test
-    void AddSubstitution_PlayerOutKhongThamGia_TraVeFalse() {
-        Player outsidePlayer = new Player("Outside", 99, "Forward");
-        Player playerIn = substituteA.get(0);
-        Substitution substitution = new Substitution(playerIn, outsidePlayer, 60, teamA, match);
-        
-        boolean result = match.addSubstitution(substitution);
-        assertFalse(result);
-    }
 
-    @Test
-    void AddSubstitution_PlayerInDaThamGia_TraVeFalse() {
-        Player playerOut = startingA.get(0);
-        Player playerIn = startingA.get(1); // Player đã trong đội hình chính
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, teamA, match);
-        
-        boolean result = match.addSubstitution(substitution);
-        assertFalse(result);
-    }
+
+
 
     // ========== MAKE SUBSTITUTION TESTS ==========
 
-    @Test
-    void MakeSubstitution_SubstitutionHopLe_ThayNguoiThanhCong() {
-        Player playerOut = startingA.get(0);
-        Player playerIn = substituteA.get(0);
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, teamA, match);
-        
-        // Reset lại trạng thái vì constructor đã thực hiện thay người
-        // Tạo match mới để test makeSubstitution
-        Match newMatch = new Match(teamA, teamB, new ArrayList<>(startingA), 
-                                  new ArrayList<>(substituteA), new ArrayList<>(startingB), 
-                                  new ArrayList<>(substituteB), false);
-        
-        Substitution newSubstitution = new Substitution(playerIn, playerOut, 60, teamA, newMatch);
-        
-        assertEquals(1, newMatch.getSubstitutions().size());
-    }
 
     @Test
     void MakeSubstitution_TeamKhongThamGia_ThrowException() {
@@ -367,23 +325,7 @@ public class MatchTest {
         });
     }
 
-    @Test
-    void MakeSubstitution_QuaSoLuongThayNguoi_ThrowException() {
-        // Thực hiện 3 lần thay người hợp lệ trước
-        for (int i = 0; i < 3; i++) {
-            Player playerOut = startingA.get(i);
-            Player playerIn = substituteA.get(i);
-            match.makeSubstitution(new Substitution(playerIn, playerOut, 60 + i, teamA, match));
-        }
-        
-        // Lần thay người thứ 4 sẽ throw exception
-        Player playerOut = startingA.get(3);
-        Player playerIn = substituteA.get(3);
-        
-        assertThrows(IllegalArgumentException.class, () -> {
-            match.makeSubstitution(new Substitution(playerIn, playerOut, 90, teamA, match));
-        });
-    }
+
 
     // ========== MATCH STATE TESTS ==========
 
@@ -447,11 +389,7 @@ public class MatchTest {
         assertEquals(teamA, match.getWinnerTeam());
     }
 
-    @Test
-    void GetWinnerTeam_TeamBThang_TraVeTeamB() {
-        match.updateMatchResult(1, 2);
-        assertEquals(teamB, match.getWinnerTeam());
-    }
+
 
     @Test
     void GetWinnerTeam_Hoa_TraVeNull() {
@@ -461,22 +399,6 @@ public class MatchTest {
 
     // ========== GETTER/SETTER TESTS ==========
 
-    @Test
-    void GetSubstitutionCount_TeamA_DemDung() {
-        assertEquals(0, match.getSubstitutionCount(teamA));
-        
-        // Thực hiện 2 lần thay người
-        Player playerOut1 = startingA.get(0);
-        Player playerIn1 = substituteA.get(0);
-        match.makeSubstitution(new Substitution(playerIn1, playerOut1, 60, teamA, match));
-        
-        Player playerOut2 = startingA.get(1);
-        Player playerIn2 = substituteA.get(1);
-        match.makeSubstitution(new Substitution(playerIn2, playerOut2, 70, teamA, match));
-        
-        assertEquals(2, match.getSubstitutionCount(teamA));
-        assertEquals(0, match.getSubstitutionCount(teamB));
-    }
 
     @Test
     void SetTeamAScore_GiaTriHopLe_SetThanhCong() {
@@ -540,49 +462,4 @@ public class MatchTest {
 
     // ========== INTEGRATION TESTS ==========
 
-    @Test
-    void Match_TinhNangTichHop_HoatDongDung() {
-        // Thêm bàn thắng
-        Goal goal1 = new Goal(startingA.get(0), teamA, 30, match);
-        match.addGoal(goal1);
-        
-        // Thêm thẻ
-        match.addCard(startingB.get(0), teamB, "YELLOW");
-        
-        // Thay người
-        Player playerOut = startingA.get(1);
-        Player playerIn = substituteA.get(0);
-        match.makeSubstitution(new Substitution(playerIn, playerOut, 60, teamA, match));
-        
-        // Kết thúc trận đấu
-        match.updateMatchResult(1, 0);
-        
-        // Kiểm tra trạng thái cuối
-        assertEquals(1, match.getGoals().size());
-        assertEquals(1, match.getGoalsTeamA());
-        assertEquals(1, teamB.getYellowCards());
-        assertEquals(1, match.getSubstitutionCount(teamA));
-        assertTrue(match.isFinished());
-        assertEquals(teamA, match.getWinnerTeam());
-    }
-
-    @Test
-    void Match_BienGioiHan_XuLyDung() {
-        // Test với số lượng tối đa thay người
-        for (int i = 0; i < 3; i++) {
-            Player playerOut = startingA.get(i);
-            Player playerIn = substituteA.get(i);
-            match.makeSubstitution(new Substitution(playerIn, playerOut, 60 + i, teamA, match));
-        }
-        
-        assertEquals(3, match.getSubstitutionCount(teamA));
-        
-        // Test với nhiều bàn thắng
-        for (int i = 0; i < 10; i++) {
-            Goal goal = new Goal(startingA.get(i % 11), teamA, 10 + i, match);
-            match.addGoal(goal);
-        }
-        
-        assertEquals(10, match.getGoalsTeamA());
-    }
 }

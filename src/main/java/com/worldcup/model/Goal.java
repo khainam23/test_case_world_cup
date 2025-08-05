@@ -1,5 +1,7 @@
 package com.worldcup.model;
 
+import com.worldcup.repository.GoalRepository;
+
 public class Goal {
     private int id;
     private Player player;
@@ -7,6 +9,9 @@ public class Goal {
     private int minute;
     private Match match;
     private GoalType type;
+    
+    // Repository for persistence operations
+    private static GoalRepository goalRepository;
 
     public Goal(Player player, Team team, int minute, Match match) {
         if (player == null || team == null || match == null) {
@@ -73,6 +78,47 @@ public class Goal {
 
     public Match getMatch() {
         return match;
+    }
+    
+    public int getId() {
+        return id;
+    }
+    
+    public void setId(int id) {
+        this.id = id;
+    }
+    
+    public GoalType getType() {
+        return type;
+    }
+    
+    public void setType(GoalType type) {
+        this.type = type;
+    }
+    
+    /**
+     * Set repository for persistence operations
+     */
+    public static void setGoalRepository(GoalRepository repository) {
+        goalRepository = repository;
+    }
+    
+    /**
+     * Save this goal to database using repository
+     */
+    public void save() throws Exception {
+        if (goalRepository != null) {
+            goalRepository.save(this);
+        }
+    }
+    
+    /**
+     * Update this goal in database using repository
+     */
+    public void update() throws Exception {
+        if (goalRepository != null && id > 0) {
+            goalRepository.update(this);
+        }
     }
 
     @Override

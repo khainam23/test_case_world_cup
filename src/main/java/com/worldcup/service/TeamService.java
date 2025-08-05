@@ -68,7 +68,7 @@ public class TeamService {
     }
     
     /**
-     * Tính toán thống kê trận đấu bằng Java
+     * Tính toán thống kê trận đấu bằng Java (CHỈ VÒNG BẢNG cho việc sắp xếp)
      */
     private void calculateMatchStatistics(Team team, int tournamentId) throws SQLException {
         String sql = """
@@ -79,6 +79,7 @@ public class TeamService {
             JOIN teams tb ON m.team_b_id = tb.id
             WHERE (ta.name = ? OR tb.name = ?) 
             AND ta.tournament_id = ? AND tb.tournament_id = ?
+            AND m.match_type = 'GROUP'
         """;
         
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
@@ -120,6 +121,13 @@ public class TeamService {
      */
     private void updateTeamMatchStats(Team team, int wins, int draws, int losses, 
                                     int goalsFor, int goalsAgainst) {
+        // Cập nhật tất cả thống kê trận đấu
+        team.setWins(wins);
+        team.setDraws(draws);
+        team.setLosses(losses);
+        team.setGoalsFor(goalsFor);
+        team.setGoalsAgainst(goalsAgainst);
+        
         // Tính điểm: thắng = 3 điểm, hòa = 1 điểm, thua = 0 điểm
         int points = wins * 3 + draws * 1;
         team.setPoints(points);
@@ -154,14 +162,15 @@ public class TeamService {
     }
     
     /**
-     * Tính toán thống kê thẻ bằng Java
+     * Tính toán thống kê thẻ bằng Java (CHỈ VÒNG BẢNG cho việc sắp xếp)
      */
     private void calculateCardStatistics(Team team, int tournamentId) throws SQLException {
         String sql = """
             SELECT card_type, COUNT(*) as card_count
             FROM cards c
             JOIN teams t ON c.team_id = t.id
-            WHERE t.name = ? AND t.tournament_id = ?
+            JOIN matches m ON c.match_id = m.id
+            WHERE t.name = ? AND t.tournament_id = ? AND m.match_type = 'GROUP'
             GROUP BY card_type
         """;
         
@@ -242,6 +251,69 @@ public class TeamService {
     }
     
     /**
+     * Tạo Team object với đầy đủ players từ ResultSet
+     */
+    private Team createTeamWithPlayersFromResultSet(ResultSet rs) throws SQLException {
+        // Tạo team cơ bản
+        Team team = createTeamFromResultSet(rs);
+        
+        // Load players từ database
+        loadPlayersForTeam(team);
+        
+        return team;
+    }
+    
+    /**
+     * Load players cho một team từ database
+     */
+    private void loadPlayersForTeam(Team team) throws SQLException {
+        // Debug logging
+       
+        
+        String sql = """
+            SELECT id, name, jersey_number, position, is_starting, yellow_cards, red_cards, is_eligible
+            FROM players
+            WHERE team_id = ?
+            ORDER BY is_starting DESC, jersey_number ASC
+        """;
+        
+        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
+        pstmt.setInt(1, team.getId());
+        ResultSet rs = pstmt.executeQuery();
+        
+        List<Player> startingPlayers = new ArrayList<>();
+        List<Player> substitutePlayers = new ArrayList<>();
+        
+        while (rs.next()) {
+            Player player = new Player(
+                rs.getString("name"),
+                rs.getInt("jersey_number"),
+                rs.getString("position")
+            );
+            player.setId(rs.getInt("id"));
+            player.setYellowCards(rs.getInt("yellow_cards"));
+            player.setRedCards(rs.getInt("red_cards"));
+            player.setEligible(rs.getBoolean("is_eligible"));
+            
+            if (rs.getBoolean("is_starting")) {
+                startingPlayers.add(player);
+            } else {
+                substitutePlayers.add(player);
+            }
+        }
+        
+        rs.close();
+        pstmt.close();
+        
+        // Debug logging
+       
+        
+        // Set players cho team
+        team.setStartingPlayers(startingPlayers);
+        team.setSubstitutePlayers(substitutePlayers);
+    }
+    
+    /**
      * Sắp xếp teams theo thứ tự bảng xếp hạng bằng Java thay vì SQL ORDER BY
      */
     public List<Team> sortTeamsByStanding(List<Team> teams) {
@@ -282,7 +354,41 @@ public class TeamService {
     }
     
     /**
+     * Lấy teams theo group với đầy đủ players và sắp xếp bằng Java
+     * Sử dụng cho knockout stage
+     */
+    public List<Team> getTeamsByGroupSortedWithPlayers(int tournamentId, String groupName) throws SQLException {
+        List<Team> teams = new ArrayList<>();
+        
+        String sql = """
+            SELECT t.id, t.name, t.region, t.coach, t.medical_staff, t.is_host,
+                   t.group_id, t.tournament_id
+            FROM teams t
+            JOIN groups g ON t.group_id = g.id
+            WHERE t.tournament_id = ? AND g.name = ?
+        """;
+        
+        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
+        pstmt.setInt(1, tournamentId);
+        pstmt.setString(2, groupName);
+        ResultSet rs = pstmt.executeQuery();
+        
+        while (rs.next()) {
+            Team team = createTeamWithPlayersFromResultSet(rs);
+            calculateTeamStatistics(team, tournamentId);
+            teams.add(team);
+        }
+        
+        rs.close();
+        pstmt.close();
+        
+        // Sắp xếp bằng Java thay vì SQL ORDER BY
+        return sortTeamsByStanding(teams);
+    }
+    
+    /**
      * Inner class Comparator để sắp xếp teams theo thứ tự bảng xếp hạng
+     * Tuân theo quy định FIFA: Điểm -> Hiệu số -> Thẻ phạt -> Đối đầu -> Bốc thăm
      * Tuân theo Open/Closed Principle - có thể mở rộng logic sắp xếp
      */
     private static class TeamStandingComparator implements Comparator<Team> {
@@ -300,7 +406,20 @@ public class TeamService {
                 return goalDiffComparison;
             }
             
-            // 3. So sánh tên đội (alphabetical)
+            // 3. So sánh số thẻ bị phạt (ít hơn = tốt hơn)
+            // Quy định FIFA: 1 thẻ đỏ = 2 thẻ vàng
+            int t1TotalCards = t1.getYellowCards() + (t1.getRedCards() * 2);
+            int t2TotalCards = t2.getYellowCards() + (t2.getRedCards() * 2);
+            int cardsComparison = Integer.compare(t1TotalCards, t2TotalCards);
+            if (cardsComparison != 0) {
+                return cardsComparison;
+            }
+            
+            // 4. Kết quả đối đầu trực tiếp (chưa implement - cần thêm logic phức tạp)
+            // TODO: Implement head-to-head comparison for exactly 2 teams
+            
+            // 5. Bốc thăm (sử dụng tên đội để đảm bảo tính nhất quán)
+            // Trong thực tế sẽ là random, nhưng để test ổn định ta dùng alphabetical
             return t1.getName().compareTo(t2.getName());
         }
     }

@@ -33,10 +33,6 @@ public class Match {
 
     private final List<Goal> goals;
     private final List<Substitution> substitutions;
-    private final List<Player> startingPlayersTeamA;
-    private final List<Player> startingPlayersTeamB;
-    private final List<Player> substitutePlayersTeamA;
-    private final List<Player> substitutePlayersTeamB;
     private final Set<Player> sentOffPlayers;
 
     // Constants
@@ -63,10 +59,7 @@ public class Match {
     }
 
 
-    public Match(Team teamA, Team teamB,
-                 List<Player> startingPlayersTeamA, List<Player> substitutePlayersTeamA,
-                 List<Player> startingPlayersTeamB, List<Player> substitutePlayersTeamB,
-                 boolean isKnockout) {
+    public Match(Team teamA, Team teamB, boolean isKnockout) {
 
         if (teamA == null || teamB == null) {
             throw new IllegalArgumentException("Hai đội bóng không được null.");
@@ -76,11 +69,11 @@ public class Match {
             throw new IllegalArgumentException("Một trận đấu phải có hai đội bóng khác nhau.");
         }
 
-        if (startingPlayersTeamA.size() != 11 || startingPlayersTeamB.size() != 11) {
+        if (teamA.getStartingPlayers().size() != 11 || teamB.getStartingPlayers().size() != 11) {
             throw new IllegalArgumentException("Mỗi đội phải có đúng 11 cầu thủ đá chính.");
         }
 
-        if (substitutePlayersTeamA.size() < 5 || substitutePlayersTeamB.size() < 5) {
+        if (teamA.getSubstitutePlayers().size() < 5 || teamB.getSubstitutePlayers().size() < 5) {
             throw new IllegalArgumentException("Mỗi đội phải có ít nhất 5 cầu thủ dự bị.");
         }
 
@@ -103,11 +96,6 @@ public class Match {
         this.substitutions = new ArrayList<>();
         this.isKnockout = isKnockout;
         this.isFinished = false;
-
-        this.startingPlayersTeamA = new ArrayList<>(startingPlayersTeamA);
-        this.substitutePlayersTeamA = new ArrayList<>(substitutePlayersTeamA);
-        this.startingPlayersTeamB = new ArrayList<>(startingPlayersTeamB);
-        this.substitutePlayersTeamB = new ArrayList<>(substitutePlayersTeamB);
 
         this.sentOffPlayers = new HashSet<>();
     }
@@ -149,41 +137,51 @@ public class Match {
         }
 
         if (player.isSentOff()) {
-            removePlayerFromMatch(player, team);
             sentOffPlayers.add(player);
+            // Don't remove from starting lineup - they're just sent off for this match
+            // Suspension will be handled before next match
         }
     }
 
     public boolean addSubstitution(Substitution substitution) {
         if (substitution == null) {
-//            throw new IllegalArgumentException("Thông tin thay người không được null.");
+            System.out.println(" Substitution is null");
             return false;
         }
 
         Player outPlayer = substitution.getOutPlayer();
         Player inPlayer = substitution.getInPlayer();
+        
 
         if (!isPlayerInMatch(outPlayer)) {
+            System.out.println(" OutPlayer " + outPlayer.getName() + " not in match");
             return false;
-//            throw new IllegalArgumentException("Cầu thủ bị thay ra không thuộc trận đấu.");
         }
 
-        if (isPlayerInMatch(inPlayer)) {
+        // Check if inPlayer is already playing (in starting lineup)
+        if (teamA.getStartingPlayers().contains(inPlayer) || teamB.getStartingPlayers().contains(inPlayer)) {
             return false;
-//            throw new IllegalArgumentException("Cầu thủ vào sân đã có mặt trong trận.");
+        }
+        
+        // Check if inPlayer is available as substitute for the correct team
+        Team playerTeam = null;
+        if (teamA.getSubstitutePlayers().contains(inPlayer)) {
+            playerTeam = teamA;
+        } else if (teamB.getSubstitutePlayers().contains(inPlayer)) {
+            playerTeam = teamB;
+        }
+        
+        if (playerTeam == null) {
+            return false;
         }
 
-        if (startingPlayersTeamA.contains(outPlayer)) {
-            startingPlayersTeamA.remove(outPlayer);
-            startingPlayersTeamA.add(inPlayer);
-            substitutePlayersTeamA.remove(inPlayer);
-        } else if (startingPlayersTeamB.contains(outPlayer)) {
-            startingPlayersTeamB.remove(outPlayer);
-            startingPlayersTeamB.add(inPlayer);
-            substitutePlayersTeamB.remove(inPlayer);
+        // Verify outPlayer and inPlayer are from the same team
+        if (playerTeam.getStartingPlayers().contains(outPlayer)) {
+            playerTeam.getModifiableStartingPlayers().remove(outPlayer);
+            playerTeam.getModifiableStartingPlayers().add(inPlayer);
+            playerTeam.getModifiableSubstitutePlayers().remove(inPlayer);
         } else {
             return false;
-//            throw new IllegalArgumentException("Không tìm thấy cầu thủ bị thay ra trong đội hình chính.");
         }
 
         substitutions.add(substitution);
@@ -198,11 +196,11 @@ public class Match {
         List<Player> substitutePlayers;
 
         if (team.equals(teamA)) {
-            startingPlayers = startingPlayersTeamA;
-            substitutePlayers = substitutePlayersTeamA;
+            startingPlayers = teamA.getModifiableStartingPlayers();
+            substitutePlayers = teamA.getModifiableSubstitutePlayers();
         } else if (team.equals(teamB)) {
-            startingPlayers = startingPlayersTeamB;
-            substitutePlayers = substitutePlayersTeamB;
+            startingPlayers = teamB.getModifiableStartingPlayers();
+            substitutePlayers = teamB.getModifiableSubstitutePlayers();
         } else {
             throw new IllegalArgumentException("Đội không tham gia trận đấu.");
         }
@@ -233,17 +231,17 @@ public class Match {
 
 
     public boolean isPlayerInMatch(Player player) {
-        return startingPlayersTeamA.contains(player) ||
-                substitutePlayersTeamA.contains(player) ||
-                startingPlayersTeamB.contains(player) ||
-                substitutePlayersTeamB.contains(player);
+        return teamA.getStartingPlayers().contains(player) ||
+                teamA.getSubstitutePlayers().contains(player) ||
+                teamB.getStartingPlayers().contains(player) ||
+                teamB.getSubstitutePlayers().contains(player);
     }
 
     public void removePlayerFromMatch(Player player, Team team) {
         if (team.equals(teamA)) {
-            startingPlayersTeamA.remove(player);
+            teamA.removeStartingPlayer(player);
         } else if (team.equals(teamB)) {
-            startingPlayersTeamB.remove(player);
+            teamB.removeStartingPlayer(player);
         }
     }
 
@@ -381,7 +379,7 @@ public class Match {
     public void setWinnerId(Integer winnerId) {
         this.winnerId = winnerId;
     }
-    
+
     // Phương thức getGroupId và setGroupId đã bị xóa vì cột group_id đã bị loại bỏ
     // Phương thức getRoundNumber và setRoundNumber đã bị xóa vì cột round_number đã bị loại bỏ
     
@@ -422,6 +420,7 @@ public class Match {
         
         return null;
     }
+
     
     @Override
     public String toString() {

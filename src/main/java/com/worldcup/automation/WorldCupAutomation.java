@@ -3,43 +3,50 @@ package com.worldcup.automation;
 import com.worldcup.calculator.TournamentStatsCalculator;
 import com.worldcup.database.DatabaseManager;
 import com.worldcup.generator.DataGenerator;
-import com.worldcup.model.Group;
-import com.worldcup.model.Match;
-import com.worldcup.model.Player;
-import com.worldcup.model.Team;
+import com.worldcup.manager.ObjectManager;
+import com.worldcup.model.*;
 import com.worldcup.service.TeamService;
 import com.worldcup.service.TournamentService;
 import com.worldcup.service.PlayerService;
+import com.worldcup.service.OOPMatchService;
+//import com.worldcup.validator.StatisticsValidator;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class WorldCupAutomation {
     private DatabaseManager dbManager;
+    private ObjectManager objectManager; // NEW: OOP Manager
     // DataGenerator has only static methods, no instance needed
     private TournamentStatsCalculator statsCalculator;
     private TeamService teamService;
     private TournamentService tournamentService;
     private PlayerService playerService;
+    private OOPMatchService oopMatchService; // NEW: OOP Match Service
     private List<Team> teams;
     private List<Match> matches;
     private List<Group> groups;
+    private KnockoutStageManager knockoutManager;
     private int currentTournamentId;
     private Random random = new Random();
 
     public WorldCupAutomation() {
         this.dbManager = new DatabaseManager();
+        this.objectManager = ObjectManager.getInstance(dbManager); // NEW: Initialize OOP Manager
         // DataGenerator uses static methods only
         this.statsCalculator = new TournamentStatsCalculator(dbManager);
         this.teamService = new TeamService(dbManager);
         this.tournamentService = new TournamentService(dbManager);
         this.playerService = new PlayerService(dbManager);
+        this.oopMatchService = new OOPMatchService(objectManager); // NEW: Initialize OOP Match Service
 
         this.teams = new ArrayList<>();
         this.groups = new ArrayList<>();
         this.matches = new ArrayList<>();
+        this.knockoutManager = new KnockoutStageManager();
     }
 
 
@@ -69,11 +76,7 @@ public class WorldCupAutomation {
             // Bước 9: Tính toán lại tournament stats chính xác
             recalculateCurrentTournamentStats();
 
-
-            // Bước 12: Hiển thị kết quả
-            displayFinalResults();
-
-            System.out.println("🎉 World Cup hoàn thành thành công!");
+    
 
         } catch (Exception e) {
             System.err.println("❌ Lỗi trong quá trình mô phỏng World Cup: " + e.getMessage());
@@ -81,16 +84,16 @@ public class WorldCupAutomation {
         }
     }
 
-
+    
+ 
     private void createTournament() throws SQLException {
-        System.out.println("Khởi tạo các cầu thủ và đội");
 
         int randomYear = DataGenerator.getRandomWorldCupYear(); // trả về 1 năm
         String randomHostCountry = DataGenerator.getRandomHostCountry(); // trả về 1 địa điểm
         String[] randomDates = DataGenerator.generateTournamentDates(randomYear); // trả về yyyy/MM/dd
         String name = DataGenerator.generateTournamentName(randomYear); // trả về tên giải đấu
 
-        System.out.println("Đã tạo giải đấu: " + name);
+        System.out.println(name);
         System.out.println("Năm: " + randomYear);
         System.out.println("Nước chủ nhà: " + randomHostCountry);
         System.out.println("Ngày bắt đầu: " + randomDates[0]);
@@ -112,19 +115,35 @@ public class WorldCupAutomation {
         currentTournamentId = dbManager.getLastInsertId();
     }
 
-    private void generateTeams() throws SQLException {
+    private void generateTeams() throws Exception {
         System.out.println("Tạo 32 đội bóng...");
 
         teams = DataGenerator.generateRandomTeams(32);
 
+        // Reset tất cả thống kê về 0 trước khi bắt đầu tournament
         for (Team team : teams) {
+            team.resetStatistics();
             insertTeamToDatabase(team);
         }
-
-        System.out.println("✅ Đã tạo " + teams.size() + " đội bóng");
     }
 
-    private void insertTeamToDatabase(Team team) throws SQLException {
+    /**
+     * NEW OOP APPROACH: Insert team using ObjectManager and repositories
+     */
+    private void insertTeamToDatabase(Team team) throws Exception {
+        // Set tournament ID for team
+        team.setTournamentId(currentTournamentId);
+        
+        // Save team using OOP approach - repository handles all database operations
+        objectManager.saveTeamComplete(team);
+        
+        
+    }
+    
+    /**
+     * LEGACY METHOD - kept for backward compatibility
+     */
+    private void insertTeamToDatabaseLegacy(Team team) throws SQLException {
         // Thêm đội bóng
         String teamSql = """
                     INSERT INTO teams (name, region, coach, medical_staff, is_host, tournament_id)
@@ -181,6 +200,10 @@ public class WorldCupAutomation {
         pstmt.setBoolean(8, player.isEligible());
         pstmt.executeUpdate();
         pstmt.close();
+        
+        // Set the player ID from database
+        int playerId = dbManager.getLastInsertId();
+        player.setId(playerId);
     }
 
     private void createGroupsAndAssignTeams() throws SQLException {
@@ -206,25 +229,24 @@ public class WorldCupAutomation {
             int groupIndex = i / 4; // 4 đội mỗi bảng
             int groupId = groupIndex + 1; // ID bảng bắt đầu từ 1
 
-            // Cập nhật đội với bảng được phân
-            String sql = "UPDATE teams SET group_id = ? WHERE name = ? AND tournament_id = ?";
+            // Cập nhật đội với bảng được phân - sử dụng team ID thay vì name để đảm bảo chính xác
+            String sql = "UPDATE teams SET group_id = ? WHERE id = ?";
             PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
             pstmt.setInt(1, groupId);
-            pstmt.setString(2, teams.get(i).getName());
-            pstmt.setInt(3, currentTournamentId);
-            pstmt.executeUpdate();
+            pstmt.setInt(2, teams.get(i).getId());
+            int rowsUpdated = pstmt.executeUpdate();
             pstmt.close();
+
+
+            // Cập nhật group ID trong team object
+            teams.get(i).setGroupId(groupId);
 
             // Thêm đội vào đối tượng bảng
             groups.get(groupIndex).addTeam(teams.get(i));
         }
-
-        System.out.println("Đã tạo 8 bảng đấu với 4 đội mỗi bảng");
     }
 
-    private void runGroupStage() throws SQLException {
-        System.out.println("Chạy các trận đấu vòng bảng...");
-
+    private void runGroupStage() throws Exception {
         for (int groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
             Group group = groups.get(groupIndex);
             List<Team> groupTeams = group.getTeams();
@@ -241,24 +263,62 @@ public class WorldCupAutomation {
                 }
             }
         }
-
-        System.out.println("Vòng bảng hoàn thành");
     }
 
-    private void simulateMatch(Team teamA, Team teamB, String matchType, int groupId) throws SQLException {
-        // Tạo kết quả trận đấu
+    /**
+     * NEW OOP APPROACH: Simulate match using OOPMatchService
+     */
+    private void simulateMatch(Team teamA, Team teamB, String matchType, int groupId) throws Exception {
+        // Generate match score
         int[] score = DataGenerator.generateMatchScore();
         int teamAScore = score[0];
         int teamBScore = score[1];
-
+        
         String venue = DataGenerator.getRandomVenue();
         String referee = DataGenerator.getRandomReferee();
+        boolean isKnockout = !matchType.equals("GROUP");
         
-        // Format date as yyyy/mm/dd
-        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy/MM/dd");
-        String matchDate = dateFormat.format(new java.util.Date(System.currentTimeMillis() + random.nextInt(1000000000)));
-
-        // Thêm trận đấu (removed round_number and status columns)
+        // Create match using OOP service
+        Match match = oopMatchService.createMatch(teamA, teamB, venue, referee, isKnockout);
+        
+        // Update match result using OOP service
+        oopMatchService.updateMatchResult(match, teamAScore, teamBScore);
+        
+        // Generate match events using OOP service
+        oopMatchService.generateMatchEvents(match, teamAScore, teamBScore);
+        
+        System.out.println("  ⚽ " + teamA.getName() + " " + teamAScore + " - " + teamBScore + " " + teamB.getName());
+    }
+    
+    /**
+     * LEGACY METHOD: kept for backward compatibility
+     */
+    @Deprecated
+    private void simulateMatchLegacy(Team teamA, Team teamB, String matchType, int groupId) throws Exception {
+        // This method has been replaced by the OOP approach above
+        System.out.println("⚠️ Warning: Using deprecated match simulation method.");
+    }
+    
+    /**
+     * Tạo Match object với đầy đủ thông tin
+     */
+    private Match createMatchObject(Team teamA, Team teamB, boolean isKnockout) {
+        // Ensure teams have complete lineups
+        if (teamA.getStartingPlayers().size() != 11 || teamB.getStartingPlayers().size() != 11) {
+            System.out.println("   ⚠️ Incomplete lineups detected - fixing...");
+            ensureTeamHasPlayers(teamA);
+            ensureTeamHasPlayers(teamB);
+        }
+        
+        return new Match(
+            teamA, teamB, isKnockout
+        );
+    }
+    
+    /**
+     * Lưu Match object vào database
+     */
+    private int saveMatchToDatabase(Match match, String venue, String referee) throws SQLException {
         String matchSql = """
                     INSERT INTO matches (team_a_id, team_b_id, team_a_score, team_b_score, match_type, 
                                        match_date, venue, referee)
@@ -268,40 +328,45 @@ public class WorldCupAutomation {
                 """;
 
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(matchSql);
-        pstmt.setString(1, teamA.getName());
+        pstmt.setString(1, match.getTeamA().getName());
         pstmt.setInt(2, currentTournamentId);
-        pstmt.setString(3, teamB.getName());
+        pstmt.setString(3, match.getTeamB().getName());
         pstmt.setInt(4, currentTournamentId);
-        pstmt.setInt(5, teamAScore);
-        pstmt.setInt(6, teamBScore);
-        pstmt.setString(7, matchType);
-        pstmt.setString(8, matchDate);
+        pstmt.setInt(5, match.getTeamAScore());
+        pstmt.setInt(6, match.getTeamBScore());
+        pstmt.setString(7, match.getMatchType());
+        pstmt.setString(8, match.getMatchDate());
         pstmt.setString(9, venue);
         pstmt.setString(10, referee);
         pstmt.executeUpdate();
         pstmt.close();
 
         int matchId = dbManager.getLastInsertId();
-
-        // Tạo các sự kiện trận đấu (bàn thắng, thẻ, thay người)
-        generateMatchEvents(matchId, teamA, teamB, teamAScore, teamBScore);
-
-        System.out.println("  " + teamA.getName() + " " + teamAScore + " - " + teamBScore + " " + teamB.getName());
+        match.setId(matchId);
+        
+        return matchId;
     }
 
 
-    private void generateMatchEvents(int matchId, Team teamA, Team teamB, int teamAScore, int teamBScore) throws SQLException {
-        // Tạo bàn thắng cho đội A
-        generateGoalsForTeam(matchId, teamA, teamAScore);
+    private void generateMatchEvents(int matchId, Team teamA, Team teamB, int teamAScore, int teamBScore) throws Exception {
+        // Tạo Match object để sử dụng trong events
+        Match match = createMatchObject(teamA, teamB, false);
+        match.setId(matchId);
+        
+        // Tạo bàn thắng cho đội A sử dụng Goal objects
+        generateGoalsForTeamUsingObjects(match, teamA, teamAScore);
 
-        // Tạo bàn thắng cho đội B
-        generateGoalsForTeam(matchId, teamB, teamBScore);
+        // Tạo bàn thắng cho đội B sử dụng Goal objects
+        generateGoalsForTeamUsingObjects(match, teamB, teamBScore);
 
-        // Tạo thẻ và thay người
-        generateCardsAndSubstitutions(matchId, teamA, teamB);
+        // Tạo thẻ và thay người sử dụng model objects
+        generateCardsAndSubstitutionsUsingObjects(match, teamA, teamB);
     }
 
-    private void generateGoalsForTeam(int matchId, Team team, int goalCount) throws SQLException {
+    /**
+     * NEW OOP APPROACH: Tạo bàn thắng sử dụng ObjectManager
+     */
+    private void generateGoalsForTeamUsingObjects(Match match, Team team, int goalCount) throws Exception {
         for (int i = 0; i < goalCount; i++) {
             // Chọn cầu thủ ngẫu nhiên từ đội hình xuất phát
             List<Player> startingPlayers = team.getStartingPlayers();
@@ -309,47 +374,282 @@ public class WorldCupAutomation {
                 Player scorer = DataGenerator.getRandomElement(startingPlayers);
                 int minute = DataGenerator.generateRandomMinute();
 
-                String sql = """
-                            INSERT INTO goals (match_id, player_id, team_id, minute, goal_type)
-                            VALUES (?, (SELECT id FROM players WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)), 
-                                    (SELECT id FROM teams WHERE name = ? AND tournament_id = ?), ?, 'REGULAR')
-                        """;
-
-                PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-                pstmt.setInt(1, matchId);
-                pstmt.setString(2, scorer.getName());
-                pstmt.setString(3, team.getName());
-                pstmt.setInt(4, currentTournamentId);
-                pstmt.setString(5, team.getName());
-                pstmt.setInt(6, currentTournamentId);
-                pstmt.setInt(7, minute);
-                pstmt.executeUpdate();
-                pstmt.close();
+                // Tạo Goal object và lưu vào database sử dụng ObjectManager
+                Goal goal = objectManager.createGoal(scorer, team, minute, match);
                 
-                // Cập nhật goals trong bảng players
-                String updatePlayerSql = """
-                    UPDATE players 
-                    SET goals = goals + 1 
-                    WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)
-                """;
-                PreparedStatement updateStmt = dbManager.getConnection().prepareStatement(updatePlayerSql);
-                updateStmt.setString(1, scorer.getName());
-                updateStmt.setString(2, team.getName());
-                updateStmt.setInt(3, currentTournamentId);
-                updateStmt.executeUpdate();
-                updateStmt.close();
+                // Thêm goal vào match object
+                match.addGoal(goal);
+                
+            
             }
         }
     }
+    
+    /**
+     * DEPRECATED: Legacy SQL methods - replaced by OOP approach
+     * These methods are kept for backward compatibility but should not be used
+     */
+    @Deprecated
+    private void saveGoalToDatabaseLegacy(Goal goal) throws SQLException {
+        // This method has been replaced by objectManager.createGoal()
+        // which handles both object creation and database persistence
+        System.out.println("⚠️ Warning: Using deprecated SQL method. Use ObjectManager instead.");
+    }
+    
+    @Deprecated
+    private void updatePlayerGoalsInDatabaseLegacy(Player player, Team team) throws SQLException {
+        // This method has been replaced by playerRepository.updateGoals()
+        // which is called automatically by objectManager.createGoal()
+        System.out.println("⚠️ Warning: Using deprecated SQL method. Use PlayerRepository instead.");
+    }
+    
+    /**
+     * Legacy method - giữ lại để tương thích
+     */
+    private void generateGoalsForTeam(int matchId, Team team, int goalCount) throws Exception {
+        // Tạo temporary match object
+        Match tempMatch = createMatchObject(team, team, false);
+        tempMatch.setId(matchId);
+        generateGoalsForTeamUsingObjects(tempMatch, team, goalCount);
+    }
 
-    private void generateCardsAndSubstitutions(int matchId, Team teamA, Team teamB) throws SQLException {
-        // Tạo thẻ cho cả hai đội
-        generateCardsForTeam(matchId, teamA);
-        generateCardsForTeam(matchId, teamB);
+    /**
+     * NEW OOP APPROACH: Tạo thẻ và thay người sử dụng ObjectManager
+     */
+    private void generateCardsAndSubstitutionsUsingObjects(Match match, Team teamA, Team teamB) throws Exception {
+        // Tạo thẻ cho đội A sử dụng Card objects
+        generateCardsForTeamUsingObjects(match, teamA);
 
-        // Tạo thay người cho cả hai đội
-        generateSubstitutionsForTeam(matchId, teamA);
-        generateSubstitutionsForTeam(matchId, teamB);
+        // Tạo thẻ cho đội B sử dụng Card objects
+        generateCardsForTeamUsingObjects(match, teamB);
+
+        // Tạo thay người cho đội A
+        generateSubstitutionsForTeamUsingObjects(match, teamA);
+
+        // Tạo thay người cho đội B
+        generateSubstitutionsForTeamUsingObjects(match, teamB);
+    }
+    
+    /**
+     * NEW OOP APPROACH: Tạo thẻ phạt cho đội sử dụng ObjectManager
+     */
+    private void generateCardsForTeamUsingObjects(Match match, Team team) throws Exception {
+        // Lấy tất cả cầu thủ của đội (chỉ đá chính)
+        List<Player> startingPlayers = new ArrayList<>(team.getStartingPlayers());
+
+        // Thẻ vàng
+        if (DataGenerator.shouldHaveYellowCard()) {
+            Player player = DataGenerator.getRandomElement(startingPlayers);
+            if (player != null) {
+                int minute = DataGenerator.generateRandomMinute();
+                
+                // Tạo Card object và lưu vào database sử dụng ObjectManager
+                Card yellowCard = objectManager.createCard(player, team, match, minute, Card.CardType.YELLOW);
+                
+                // Thêm card vào match object
+                match.addCard(player, team, "YELLOW");
+                
+                
+            }
+        }
+
+        // Thẻ đỏ (ít phổ biến hơn)
+        if (DataGenerator.shouldHaveRedCard()) {
+            Player player = DataGenerator.getRandomElement(startingPlayers);
+            if (player != null) {
+                int minute = DataGenerator.generateRandomMinute();
+                
+                // Tạo Card object và lưu vào database sử dụng ObjectManager
+                Card redCard = objectManager.createCard(player, team, match, minute, Card.CardType.RED);
+                
+                // Thêm card vào match object
+                match.addCard(player, team, "RED");
+                
+                
+            }
+        }
+    }
+    
+    /**
+     * Lưu Card object vào database
+     */
+    private void saveCardToDatabase(Card card) throws SQLException {
+        String sql = """
+                    INSERT INTO cards (match_id, player_id, team_id, card_type, minute)
+                    VALUES (?, (SELECT id FROM players WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)), 
+                            (SELECT id FROM teams WHERE name = ? AND tournament_id = ?), ?, ?)
+                """;
+
+        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
+        pstmt.setInt(1, card.getMatch().getId());
+        pstmt.setString(2, card.getPlayer().getName());
+        pstmt.setString(3, card.getTeam().getName());
+        pstmt.setInt(4, currentTournamentId);
+        pstmt.setString(5, card.getTeam().getName());
+        pstmt.setInt(6, currentTournamentId);
+        pstmt.setString(7, card.getType().getLabel().toUpperCase());
+        pstmt.setInt(8, card.getMinutes());
+        pstmt.executeUpdate();
+        pstmt.close();
+    }
+    
+    /**
+     * Cập nhật số thẻ của cầu thủ trong database
+     */
+    private void updatePlayerCardsInDatabase(Player player, Team team, String cardType) throws SQLException {
+        String updatePlayerSql;
+        if ("YELLOW".equals(cardType)) {
+            updatePlayerSql = """
+                UPDATE players 
+                SET yellow_cards = yellow_cards + 1 
+                WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)
+            """;
+        } else {
+            updatePlayerSql = """
+                UPDATE players 
+                SET red_cards = red_cards + 1 
+                WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)
+            """;
+        }
+        
+        PreparedStatement updateStmt = dbManager.getConnection().prepareStatement(updatePlayerSql);
+        updateStmt.setString(1, player.getName());
+        updateStmt.setString(2, team.getName());
+        updateStmt.setInt(3, currentTournamentId);
+        updateStmt.executeUpdate();
+        updateStmt.close();
+    }
+    
+    /**
+     * NEW OOP APPROACH: Tạo thay người cho đội sử dụng ObjectManager
+     * Lưu ý: Không thực hiện thay người thực tế để không ảnh hưởng đến các trận đấu sau
+     */
+    private void generateSubstitutionsForTeamUsingObjects(Match match, Team team) throws Exception {
+        if (DataGenerator.shouldHaveSubstitution()) {
+            // Validate team has players loaded
+            if (team.getStartingPlayers().isEmpty() || team.getSubstitutePlayers().isEmpty()) {
+                System.out.println("   ⚠️ Team " + team.getName() + " không có đầy đủ thông tin cầu thủ để thay người");
+                return;
+            }
+            
+            int substitutionCount = random.nextInt(3) + 1; // 1-3 lần thay người
+
+            for (int i = 0; i < substitutionCount && i < team.getSubstitutePlayers().size(); i++) {
+                Player playerOut = DataGenerator.getRandomElement(team.getStartingPlayers());
+                Player playerIn = DataGenerator.getRandomElement(team.getSubstitutePlayers());
+
+                if (playerOut != null && playerIn != null) {
+                    // Additional validation - ensure players have valid IDs and names
+                    if (playerOut.getName() == null || playerOut.getName().trim().isEmpty()) {
+                        System.out.println("   ⚠️ PlayerOut có tên không hợp lệ, bỏ qua thay người");
+                        continue;
+                    }
+                    
+                    if (playerIn.getName() == null || playerIn.getName().trim().isEmpty()) {
+                        System.out.println("   ⚠️ PlayerIn có tên không hợp lệ, bỏ qua thay người");
+                        continue;
+                    }
+                    
+                    // Validate players exist in database before creating substitution
+                    if (!validatePlayerExistsInDatabase(playerOut, team) || !validatePlayerExistsInDatabase(playerIn, team)) {
+                        System.out.println("   ⚠️ Một trong hai cầu thủ không tồn tại trong database, bỏ qua thay người");
+                        continue;
+                    }
+                    
+                    int minute = DataGenerator.generateSubstitutionMinute();
+
+                    // Tạo Substitution object và lưu vào database sử dụng ObjectManager
+                    // Không thực hiện thay người thực tế để không ảnh hưởng đến các trận đấu sau
+                    try {
+                        Substitution substitution = objectManager.createSubstitution(match, team, playerIn, playerOut, minute);
+                        
+                        // Cập nhật số lần thay người cho team
+                        team.setSubstitutionCount(team.getSubstitutionCount() + 1);
+                        
+                        
+                        
+                    } catch (Exception e) {
+                        System.out.println("   Không thể thay người: " + e.getMessage());
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Lưu Substitution object vào database
+     */
+    private void saveSubstitutionToDatabase(Substitution substitution) throws SQLException {
+        String sql = """
+                    INSERT INTO substitutions (match_id, team_id, player_in_id, player_out_id, minute)
+                    VALUES (?, (SELECT id FROM teams WHERE name = ? AND tournament_id = ?), 
+                            (SELECT id FROM players WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)),
+                            (SELECT id FROM players WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)), ?)
+                """;
+
+        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
+        pstmt.setInt(1, substitution.getMatch().getId());
+        pstmt.setString(2, substitution.getTeam().getName());
+        pstmt.setInt(3, currentTournamentId);
+        pstmt.setString(4, substitution.getInPlayer().getName());
+        pstmt.setString(5, substitution.getTeam().getName());
+        pstmt.setInt(6, currentTournamentId);
+        pstmt.setString(7, substitution.getOutPlayer().getName());
+        pstmt.setString(8, substitution.getTeam().getName());
+        pstmt.setInt(9, currentTournamentId);
+        pstmt.setInt(10, substitution.getMinute());
+        pstmt.executeUpdate();
+        pstmt.close();
+    }
+    
+    /**
+     * Lưu thay người trực tiếp vào database mà không tạo Substitution object
+     */
+    private void saveSubstitutionToDatabase(Match match, Team team, Player playerIn, Player playerOut, int minute) throws SQLException {
+        String sql = """
+                    INSERT INTO substitutions (match_id, team_id, player_in_id, player_out_id, minute)
+                    VALUES (?, (SELECT id FROM teams WHERE name = ? AND tournament_id = ?), 
+                            (SELECT id FROM players WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)),
+                            (SELECT id FROM players WHERE name = ? AND team_id = (SELECT id FROM teams WHERE name = ? AND tournament_id = ?)), ?)
+                """;
+
+        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
+        pstmt.setInt(1, match.getId());
+        pstmt.setString(2, team.getName());
+        pstmt.setInt(3, currentTournamentId);
+        pstmt.setString(4, playerIn.getName());
+        pstmt.setString(5, team.getName());
+        pstmt.setInt(6, currentTournamentId);
+        pstmt.setString(7, playerOut.getName());
+        pstmt.setString(8, team.getName());
+        pstmt.setInt(9, currentTournamentId);
+        pstmt.setInt(10, minute);
+        pstmt.executeUpdate();
+        pstmt.close();
+    }
+    
+    /**
+     * Đồng bộ thống kê Team object với database
+     * Lưu ý: Bảng teams không có các cột thống kê, thống kê được tính toán trong Java
+     * Method này được giữ lại để tương thích, nhưng không thực hiện gì
+     */
+    private void syncTeamStatisticsToDatabase(Team team) throws SQLException {
+        // Bảng teams trong database không có các cột thống kê như points, goal_difference, v.v.
+        // Các thống kê này được tính toán trực tiếp trong Java thông qua Team objects
+        // và được sử dụng bởi các Service classes để tính toán kết quả
+        
+        // Không cần cập nhật database vì thống kê được tính toán động
+        // Chỉ cần đảm bảo Team objects có dữ liệu chính xác
+    }
+    
+    /**
+     * Legacy method - giữ lại để tương thích
+     */
+    private void generateCardsAndSubstitutions(int matchId, Team teamA, Team teamB) throws Exception {
+        // Tạo temporary match object
+        Match tempMatch = createMatchObject(teamA, teamB, false);
+        tempMatch.setId(matchId);
+        generateCardsAndSubstitutionsUsingObjects(tempMatch, teamA, teamB);
     }
 
     private void generateCardsForTeam(int matchId, Team team) throws SQLException {
@@ -454,10 +754,32 @@ public class WorldCupAutomation {
     }
 
     private List<Team> determineQualifiedTeams() throws SQLException {
-        System.out.println("🏅 Đang xác định các đội vượt qua vòng bảng...");
+        
 
-        // Sử dụng TournamentService để lấy qualified teams với logic Java
-        List<Team> qualifiedTeams = tournamentService.getQualifiedTeamsCalculatedInJava(currentTournamentId);
+        // Sử dụng TournamentService để lấy group standings với ID và players chính xác từ database
+        Map<String, List<Team>> teamsByGroup = tournamentService.getAllGroupStandingsWithPlayersCalculatedInJava(currentTournamentId);
+
+    
+
+        // Lấy đội nhất và nhì bảng theo thứ tự A, B, C, D, E, F, G, H
+        List<Team> firstPlaceTeams = new ArrayList<>();
+        List<Team> secondPlaceTeams = new ArrayList<>();
+        String[] groupOrder = {"A", "B", "C", "D", "E", "F", "G", "H"};
+        
+        for (String groupName : groupOrder) {
+            List<Team> groupTeams = teamsByGroup.get(groupName);
+            
+            if (groupTeams != null && groupTeams.size() >= 2) {
+                firstPlaceTeams.add(groupTeams.get(0)); // Nhất bảng
+                secondPlaceTeams.add(groupTeams.get(1)); // Nhì bảng
+                
+            } else {
+                System.out.println("   ❌ Group " + groupName + " không đủ teams!");
+            }
+        }
+        
+        // Tạo danh sách đội vượt qua với ghép đôi vòng 16 đội phù hợp
+        List<Team> qualifiedTeams = createRoundOf16Pairings(firstPlaceTeams, secondPlaceTeams);
 
         // Hiển thị kết quả
         displayQualifiedTeams(qualifiedTeams);
@@ -470,32 +792,28 @@ public class WorldCupAutomation {
      */
     private void displayQualifiedTeams(List<Team> qualifiedTeams) throws SQLException {
         // Lấy group standings để hiển thị
-        Map<String, List<Team>> groupStandings = tournamentService.getAllGroupStandingsCalculatedInJava(currentTournamentId);
+        Map<String, List<Team>> groupStandings = tournamentService.getAllGroupStandingsWithPlayersCalculatedInJava(currentTournamentId);
         
-        List<Team> firstPlaceTeams = new ArrayList<>();
-        List<Team> secondPlaceTeams = new ArrayList<>();
+        // Đảm bảo thứ tự bảng A, B, C, D, E, F, G, H
+        String[] groupOrder = {"A", "B", "C", "D", "E", "F", "G", "H"};
         
-        for (Map.Entry<String, List<Team>> entry : groupStandings.entrySet()) {
-            String groupName = entry.getKey();
-            List<Team> teams = entry.getValue();
-            
-            if (teams.size() >= 2) {
-                System.out.println("🥇 Nhất Bảng " + groupName + ": " + teams.get(0).getName());
-                System.out.println("🥈 Nhì Bảng " + groupName + ": " + teams.get(1).getName());
-                
-                firstPlaceTeams.add(teams.get(0));
-                secondPlaceTeams.add(teams.get(1));
-            }
+        for (String groupName : groupOrder) {
+            List<Team> teams = groupStandings.get(groupName);
         }
 
-        // Tạo danh sách đội vượt qua với ghép đôi vòng 16 đội phù hợp
-        List<Team> roundOf16Teams = createRoundOf16Pairings(firstPlaceTeams, secondPlaceTeams);
-
-        System.out.println("✅ " + roundOf16Teams.size() + " đội đã vào vòng loại trực tiếp");
+        
     }
 
     private List<Team> createRoundOf16Pairings(List<Team> firstPlace, List<Team> secondPlace) {
-        System.out.println("\n🏆 Ghép Đôi Vòng 16 Đội (Theo Quy Định FIFA):");
+       
+        
+        // Kiểm tra đủ teams
+        if (firstPlace.size() < 8 || secondPlace.size() < 8) {
+            System.err.println("❌ Không đủ teams để tạo vòng 16 đội!");
+            System.err.println("   First place: " + firstPlace.size() + "/8");
+            System.err.println("   Second place: " + secondPlace.size() + "/8");
+            return new ArrayList<>();
+        }
 
         List<Team> pairings = new ArrayList<>();
 
@@ -503,82 +821,123 @@ public class WorldCupAutomation {
         // Trận 1: Nhất bảng A vs Nhì bảng B
         pairings.add(firstPlace.get(0));   // Nhất bảng A
         pairings.add(secondPlace.get(1));  // Nhì bảng B
-        System.out.println("Trận 1: " + firstPlace.get(0).getName() + " (A1) vs " + secondPlace.get(1).getName() + " (B2)");
+        
 
         // Trận 2: Nhất bảng B vs Nhì bảng A  
         pairings.add(firstPlace.get(1));   // Nhất bảng B
         pairings.add(secondPlace.get(0));  // Nhì bảng A
-        System.out.println("Trận 2: " + firstPlace.get(1).getName() + " (B1) vs " + secondPlace.get(0).getName() + " (A2)");
+        
 
         // Trận 3: Nhất bảng C vs Nhì bảng D
         pairings.add(firstPlace.get(2));   // Nhất bảng C
         pairings.add(secondPlace.get(3));  // Nhì bảng D
-        System.out.println("Trận 3: " + firstPlace.get(2).getName() + " (C1) vs " + secondPlace.get(3).getName() + " (D2)");
+        
 
         // Trận 4: Nhất bảng D vs Nhì bảng C
         pairings.add(firstPlace.get(3));   // Nhất bảng D
         pairings.add(secondPlace.get(2));  // Nhì bảng C
-        System.out.println("Trận 4: " + firstPlace.get(3).getName() + " (D1) vs " + secondPlace.get(2).getName() + " (C2)");
+        
 
         // Trận 5: Nhất bảng E vs Nhì bảng F
         pairings.add(firstPlace.get(4));   // Nhất bảng E
         pairings.add(secondPlace.get(5));  // Nhì bảng F
-        System.out.println("Trận 5: " + firstPlace.get(4).getName() + " (E1) vs " + secondPlace.get(5).getName() + " (F2)");
+        
 
         // Trận 6: Nhất bảng F vs Nhì bảng E
         pairings.add(firstPlace.get(5));   // Nhất bảng F
         pairings.add(secondPlace.get(4));  // Nhì bảng E
-        System.out.println("Trận 6: " + firstPlace.get(5).getName() + " (F1) vs " + secondPlace.get(4).getName() + " (E2)");
+        
 
         // Trận 7: Nhất bảng G vs Nhì bảng H
         pairings.add(firstPlace.get(6));   // Nhất bảng G
         pairings.add(secondPlace.get(7));  // Nhì bảng H
-        System.out.println("Trận 7: " + firstPlace.get(6).getName() + " (G1) vs " + secondPlace.get(7).getName() + " (H2)");
+        
 
         // Trận 8: Nhất bảng H vs Nhì bảng G
         pairings.add(firstPlace.get(7));   // Nhất bảng H
         pairings.add(secondPlace.get(6));  // Nhì bảng G
-        System.out.println("Trận 8: " + firstPlace.get(7).getName() + " (H1) vs " + secondPlace.get(6).getName() + " (G2)");
+        
 
         System.out.println();
         return pairings;
     }
 
-    private void runKnockoutStage(List<Team> qualifiedTeams) throws SQLException {
-        System.out.println("🏆 Đang chạy vòng loại trực tiếp...");
+    private void runKnockoutStage(List<Team> qualifiedTeams) throws Exception {
+        
 
-        // Không cần cập nhật trạng thái giải đấu nữa vì đã xóa cột status
+        // Tạo bracket cho vòng 16 đội sử dụng KnockoutStageManager
+        setupRoundOf16Bracket(qualifiedTeams);
 
         // Vòng 16 đội
         List<Team> quarterFinalists = runKnockoutRound(qualifiedTeams, "ROUND_16");
+        
+        // Cập nhật KnockoutStageManager với kết quả vòng 16
+        List<String> quarterFinalistNames = quarterFinalists.stream().map(Team::getName).collect(Collectors.toList());
+        knockoutManager.setRoundOf16Winners(quarterFinalistNames);
 
         // Tứ kết
         List<Team> semiFinalists = runKnockoutRound(quarterFinalists, "QUARTER");
+        
+        // Cập nhật KnockoutStageManager với kết quả tứ kết
+        List<String> semiFinalistNames = semiFinalists.stream().map(Team::getName).collect(Collectors.toList());
+        knockoutManager.setQuarterFinalWinners(semiFinalistNames);
 
         // Bán kết
         List<Team> finalists = runKnockoutRound(semiFinalists, "SEMI");
 
         // Xác định 2 đội thua bán kết (đồng hạng 3 theo quy định FIFA mới)
         List<Team> thirdPlaceTeams = getThirdPlaceTeams(semiFinalists, finalists);
-        if (thirdPlaceTeams.size() == 2) {
-            System.out.println("🥉 Hai đội đồng hạng 3 (thua bán kết):");
-            System.out.println("   " + thirdPlaceTeams.get(0).getName());
-            System.out.println("   " + thirdPlaceTeams.get(1).getName());
-        }
+        
+        // Cập nhật KnockoutStageManager với kết quả bán kết
+        List<String> finalistNames = finalists.stream().map(Team::getName).collect(Collectors.toList());
+        List<String> thirdPlaceNames = thirdPlaceTeams.stream().map(Team::getName).collect(Collectors.toList());
+        knockoutManager.setSemiFinalWinners(finalistNames, thirdPlaceNames);
+        
+        
 
         // Chung kết
         if (finalists.size() == 2) {
-            System.out.println("🏆 Trận chung kết:");
+            System.out.println("Trận chung kết:");
             Team champion = runKnockoutMatch(finalists.get(0), finalists.get(1), "FINAL");
-            System.out.println("   Đội vô địch: " + champion.getName());
+          
+
+            // Cập nhật KnockoutStageManager với kết quả chung kết
+            Team runnerUp = finalists.stream().filter(t -> !t.equals(champion)).findFirst().orElse(null);
+            knockoutManager.setFinalResult(champion.getName(), runnerUp != null ? runnerUp.getName() : null);
 
             // Cập nhật giải đấu với kết quả cuối cùng
             updateTournamentResults(champion, finalists, thirdPlaceTeams);
         }
     }
+    
+    /**
+     * Thiết lập bracket cho vòng 16 đội sử dụng KnockoutStageManager
+     */
+    private void setupRoundOf16Bracket(List<Team> qualifiedTeams) throws SQLException {
+        // Lấy group standings để tạo bracket
+        Map<String, List<Team>> groupStandings = tournamentService.getAllGroupStandingsWithPlayersCalculatedInJava(currentTournamentId);
+        
+        Map<String, String> winners = new HashMap<>();
+        Map<String, String> runners = new HashMap<>();
+        
+        // Đảm bảo thứ tự bảng A, B, C, D, E, F, G, H
+        String[] groupOrder = {"A", "B", "C", "D", "E", "F", "G", "H"};
+        
+        for (String groupName : groupOrder) {
+            List<Team> teams = groupStandings.get(groupName);
+            if (teams != null && teams.size() >= 2) {
+                winners.put(groupName, teams.get(0).getName());
+                runners.put(groupName, teams.get(1).getName());
+            }
+        }
+        
+        // Tạo bracket sử dụng KnockoutStageManager
+        knockoutManager.generateRoundOf16Bracket(winners, runners);
+        
+    }
 
-    private List<Team> runKnockoutRound(List<Team> teams, String roundType) throws SQLException {
-        System.out.println("🔥 Các trận đấu " + roundType + ":");
+    private List<Team> runKnockoutRound(List<Team> teams, String roundType) throws Exception {
+        System.out.println("Các trận đấu " + roundType + ":");
 
         List<Team> winners = new ArrayList<>();
 
@@ -592,7 +951,14 @@ public class WorldCupAutomation {
         return winners;
     }
 
-    private Team runKnockoutMatch(Team teamA, Team teamB, String matchType) throws SQLException {
+    private Team runKnockoutMatch(Team teamA, Team teamB, String matchType) throws Exception {
+        // Reload players for both teams to ensure consistency with database
+        reloadPlayersForTeam(teamA);
+        reloadPlayersForTeam(teamB);
+        
+        // Tạo Match object cho trận knockout
+        Match match = createMatchObject(teamA, teamB, true);
+        
         int[] score = DataGenerator.generateMatchScore();
         int teamAScore = score[0];
         int teamBScore = score[1];
@@ -604,7 +970,27 @@ public class WorldCupAutomation {
             teamBScore += (teamAScore > teamBScore) ? 0 : 1;
         }
 
-        Team winner = (teamAScore > teamBScore) ? teamA : teamB;
+        // Cập nhật kết quả thông qua Match object
+        match.updateMatchResult(teamAScore, teamBScore);
+        
+
+        // Cập nhật thống kê đội bóng
+        teamA.updateMatchStatistics(teamAScore, teamBScore);
+        teamB.updateMatchStatistics(teamBScore, teamAScore);
+        
+        // Đồng bộ thống kê Team objects với database
+        syncTeamStatisticsToDatabase(teamA);
+        syncTeamStatisticsToDatabase(teamB);
+        
+        // Lấy đội thắng từ Match object
+        Team winner = match.getWinnerTeam();
+        if (winner == null) {
+            // Fallback nếu có vấn đề với logic
+            winner = (teamAScore > teamBScore) ? teamA : teamB;
+            System.out.println("   ⚠️ DEBUG: getWinnerTeam() trả về null, sử dụng fallback logic");
+        }
+        
+        
 
         String venue = DataGenerator.getRandomVenue();
         String referee = DataGenerator.getRandomReferee();
@@ -612,31 +998,11 @@ public class WorldCupAutomation {
         // Format date as yyyy/mm/dd
         java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy/MM/dd");
         String matchDate = dateFormat.format(new java.util.Date(System.currentTimeMillis() + random.nextInt(1000000000)));
+        
+        match.setMatchDate(matchDate);
 
-        // Thêm trận đấu (removed status column)
-        String matchSql = """
-                    INSERT INTO matches (team_a_id, team_b_id, team_a_score, team_b_score, match_type, 
-                                       match_date, venue, referee)
-                    VALUES ((SELECT id FROM teams WHERE name = ? AND tournament_id = ?), 
-                            (SELECT id FROM teams WHERE name = ? AND tournament_id = ?), 
-                            ?, ?, ?, ?, ?, ?)
-                """;
-
-        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(matchSql);
-        pstmt.setString(1, teamA.getName());
-        pstmt.setInt(2, currentTournamentId);
-        pstmt.setString(3, teamB.getName());
-        pstmt.setInt(4, currentTournamentId);
-        pstmt.setInt(5, teamAScore);
-        pstmt.setInt(6, teamBScore);
-        pstmt.setString(7, matchType);
-        pstmt.setString(8, matchDate);
-        pstmt.setString(9, venue);
-        pstmt.setString(10, referee);
-        pstmt.executeUpdate();
-        pstmt.close();
-
-        int matchId = dbManager.getLastInsertId();
+        // Lưu Match object vào database
+        int matchId = saveMatchToDatabase(match, venue, referee);
 
         // Tạo các sự kiện trận đấu
         generateMatchEvents(matchId, teamA, teamB, teamAScore, teamBScore);
@@ -645,38 +1011,136 @@ public class WorldCupAutomation {
 
         return winner;
     }
+    
+    /**
+     * Reload players for a team from database to ensure consistency
+     */
+    private void reloadPlayersForTeam(Team team) throws Exception {
+        try {
+            // Use ObjectManager to reload team with fresh player data
+            Team reloadedTeam = objectManager.loadTeamWithPlayers(team.getName(), team.getTournamentId());
+            
+            if (reloadedTeam != null && 
+                !reloadedTeam.getStartingPlayers().isEmpty() && 
+                !reloadedTeam.getSubstitutePlayers().isEmpty()) {
+                
+                // Update the current team object with fresh player data
+                team.setStartingPlayers(reloadedTeam.getStartingPlayers());
+                team.setSubstitutePlayers(reloadedTeam.getSubstitutePlayers());
+            } else {
+                // Fallback: Use existing players and ensure lineup is complete
+               
+                ensureTeamHasPlayers(team);
+            }
+            
+        } catch (Exception e) {
+            System.out.println("   ⚠️ Reload failed for " + team.getName() + ", using existing players");
+            // Fallback: Use existing players and ensure lineup is complete
+            ensureTeamHasPlayers(team);
+        }
+    }
+    
+    /**
+     * Ensure team has complete lineup using existing players
+     */
+    private void ensureTeamHasPlayers(Team team) {
+        List<Player> startingPlayers = new ArrayList<>(team.getStartingPlayers());
+        List<Player> substitutePlayers = new ArrayList<>(team.getSubstitutePlayers());
+        
+        // If team has no players at all, this is a critical error
+        if (startingPlayers.isEmpty() && substitutePlayers.isEmpty()) {
+            System.out.println("   ❌ Team " + team.getName() + " has no players at all - critical error");
+            return;
+        }
+        
+        // Combine all players
+        List<Player> allPlayers = new ArrayList<>();
+        allPlayers.addAll(startingPlayers);
+        allPlayers.addAll(substitutePlayers);
+        
+        // Clear current lists
+        startingPlayers.clear();
+        substitutePlayers.clear();
+        
+        // Redistribute players: first 11 eligible players go to starting lineup
+        int startingCount = 0;
+        for (Player player : allPlayers) {
+            if (startingCount < 11 && player.isPlayerEligible() && !player.isSuspended()) {
+                startingPlayers.add(player);
+                startingCount++;
+            } else {
+                substitutePlayers.add(player);
+            }
+        }
+        
+        // If still not enough starting players, promote from substitutes
+        while (startingPlayers.size() < 11 && !substitutePlayers.isEmpty()) {
+            Player substitute = substitutePlayers.remove(0);
+            startingPlayers.add(substitute);
+            System.out.println("   ⬆️ " + substitute.getName() + " promoted to starting lineup");
+        }
+        
+        // Update team
+        team.setStartingPlayers(startingPlayers);
+        team.setSubstitutePlayers(substitutePlayers);
+        
+        
+    }
+    
+    /**
+     * Validate that a player exists in the database for the given team
+     */
+    private boolean validatePlayerExistsInDatabase(Player player, Team team) {
+        try {
+            String sql = """
+                SELECT COUNT(*) FROM players p 
+                JOIN teams t ON p.team_id = t.id 
+                WHERE p.name = ? AND t.name = ? AND t.tournament_id = ?
+            """;
+            
+            PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
+            pstmt.setString(1, player.getName());
+            pstmt.setString(2, team.getName());
+            pstmt.setInt(3, team.getTournamentId());
+            ResultSet rs = pstmt.executeQuery();
+            
+            boolean exists = false;
+            if (rs.next()) {
+                exists = rs.getInt(1) > 0;
+            }
+            
+            rs.close();
+            pstmt.close();
+            return exists;
+            
+        } catch (Exception e) {
+            System.out.println("   ⚠️ Lỗi khi validate player " + player.getName() + ": " + e.getMessage());
+            return false;
+        }
+    }
 
     private List<Team> getThirdPlaceTeams(List<Team> semiFinalists, List<Team> finalists) {
         List<Team> thirdPlaceTeams = new ArrayList<>();
         
-        System.out.println("🔍 Debug - Tìm đội hạng 3:");
-        System.out.println("   Số đội bán kết: " + semiFinalists.size());
-        System.out.println("   Số đội chung kết: " + finalists.size());
-        
         for (Team team : semiFinalists) {
-            System.out.println("   Kiểm tra đội: " + team.getName());
             if (!finalists.contains(team)) {
                 thirdPlaceTeams.add(team);
-                System.out.println("     ✅ Thêm vào danh sách hạng 3: " + team.getName());
-            } else {
-                System.out.println("     ❌ Đội này vào chung kết: " + team.getName());
             }
         }
         
-        System.out.println("   Tổng số đội hạng 3: " + thirdPlaceTeams.size());
         return thirdPlaceTeams;
     }
 
     private void updateTournamentResults(Team champion, List<Team> finalists, List<Team> thirdPlaceTeams) throws SQLException {
         Team runnerUp = finalists.stream().filter(t -> !t.equals(champion)).findFirst().orElse(null);
         
-        System.out.println("🏆 Cập nhật kết quả cuối cùng:");
-        System.out.println("   Champion: " + champion.getName());
-        System.out.println("   Runner-up: " + (runnerUp != null ? runnerUp.getName() : "N/A"));
+        System.out.println("Kết quả:");
+        System.out.println("   Đội vô địch: " + champion.getName());
+        System.out.println("   Đội về nhì: " + (runnerUp != null ? runnerUp.getName() : "N/A"));
         
         // Theo quy định FIFA mới: 2 đội thua bán kết đồng hạng 3
         if (thirdPlaceTeams.size() == 2) {
-            System.out.println("   Third place (đồng hạng): " + thirdPlaceTeams.get(0).getName() + " & " + thirdPlaceTeams.get(1).getName());
+            System.out.println("   Hai đội đồng hạng ba: " + thirdPlaceTeams.get(0).getName() + " và " + thirdPlaceTeams.get(1).getName());
         }
 
         // Đảm bảo tournament_stats record tồn tại
@@ -697,15 +1161,8 @@ public class WorldCupAutomation {
             thirdPlaceId02 = getTeamId(thirdPlaceTeams.get(1).getName());
         }
 
-        System.out.println("🔍 Debug - Cập nhật DB:");
-        System.out.println("   Tournament ID: " + currentTournamentId);
-        System.out.println("   Champion ID: " + championId);
-        System.out.println("   Runner-up ID: " + runnerUpId);
-        System.out.println("   Third place ID 01: " + thirdPlaceId01);
-        System.out.println("   Third place ID 02: " + thirdPlaceId02);
-
         tournamentService.updateTournamentWinners(currentTournamentId, championId, runnerUpId, thirdPlaceId01, thirdPlaceId02);
-        System.out.println("✅ Đã gọi updateTournamentWinners với 2 đội đồng hạng 3");
+        
     }
 
 
@@ -756,7 +1213,7 @@ public class WorldCupAutomation {
             insertPstmt.executeUpdate();
             insertPstmt.close();
 
-            System.out.println("✅ Đã tạo tournament_stats record cho tournament ID: " + currentTournamentId);
+            
         }
     }
 
@@ -768,7 +1225,7 @@ public class WorldCupAutomation {
     // }
 
     private void generateTournamentStatistics() throws SQLException {
-        System.out.println("📊 Đang tạo thống kê giải đấu...");
+        
 
         // Sử dụng TournamentService để tính toán thống kê bằng Java
         TournamentService.TournamentStats stats = tournamentService.calculateTournamentStats(currentTournamentId);
@@ -791,7 +1248,7 @@ public class WorldCupAutomation {
             updateTournamentStatsInDatabase(stats);
         }
 
-        System.out.println("✅ Đã cập nhật thống kê giải đấu");
+        
     }
     
     /**
@@ -851,67 +1308,7 @@ public class WorldCupAutomation {
         updateStatsPstmt.close();
     }
 
-    private void displayFinalResults() throws SQLException {
-        System.out.println("\n" + "=".repeat(50));
-        System.out.println("🏆 KẾT QUẢ CUỐI CÙNG FIFA WORLD CUP 🏆");
-        System.out.println("=".repeat(50));
-
-        // Lấy kết quả giải đấu
-        String resultsSql = """
-                    SELECT 
-                        t.name as tournament_name,
-                        t.year,
-                        champion.name as champion,
-                        runner_up.name as runner_up,
-                        ts.total_goals,
-                        ts.total_matches,
-                        ts.top_scorer_id,
-                        ts.top_scorer_goals,
-                        top_scorer.name as top_scorer_name
-                    FROM tournaments t
-                    LEFT JOIN tournament_stats ts ON t.id = ts.tournament_id
-                    LEFT JOIN teams champion ON ts.champion_id = champion.id
-                    LEFT JOIN teams runner_up ON ts.runner_up_id = runner_up.id
-                    LEFT JOIN players top_scorer ON ts.top_scorer_id = top_scorer.id
-                    WHERE t.id = ?
-                """;
-
-        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(resultsSql);
-        pstmt.setInt(1, currentTournamentId);
-        ResultSet rs = pstmt.executeQuery();
-
-        if (rs.next()) {
-            System.out.println("🏆 VÔ ĐỊCH: " + rs.getString("champion"));
-            System.out.println("🥈 Á QUÂN: " + rs.getString("runner_up"));
-            
-            // Hiển thị 2 đội đồng hạng 3 (theo quy định FIFA mới)
-            displayThirdPlaceTeams();
-            System.out.println();
-            System.out.println("📊 THỐNG KÊ GIẢI ĐẤU:");
-            System.out.println("   Tổng số trận: " + rs.getInt("total_matches"));
-            System.out.println("   Tổng số bàn thắng: " + rs.getInt("total_goals"));
-            
-            // Hiển thị top scorer từ tournament_stats
-            String topScorerName = rs.getString("top_scorer_name");
-            int topScorerGoals = rs.getInt("top_scorer_goals");
-            
-            if (topScorerName != null && topScorerGoals > 0) {
-                System.out.println("   Vua phá lưới: " + topScorerName + " (" + topScorerGoals + " bàn thắng)");
-            } else {
-                System.out.println("   Vua phá lưới: Chưa có bàn thắng nào");
-            }
-        }
-
-        rs.close();
-        pstmt.close();
-
-        // Hiển thị bảng xếp hạng cuối vòng bảng
-        System.out.println("\n📋 BẢNG XẾP HẠNG CUỐI VÒNG BẢNG:");
-        displayGroupStandings();
-
-        System.out.println("\n" + "=".repeat(50));
-    }
-
+   
     private void displayGroupStandings() throws SQLException {
         // Sử dụng TournamentService để lấy group standings đã được sắp xếp bằng Java
         Map<String, List<Team>> groupStandings = tournamentService.getAllGroupStandingsCalculatedInJava(currentTournamentId);
@@ -931,16 +1328,16 @@ public class WorldCupAutomation {
                 // Lấy thống kê chi tiết từ database (chỉ để hiển thị)
                 TeamDisplayStats stats = getTeamDisplayStats(team.getName(), currentTournamentId);
                 
-                System.out.printf("  %d. %-15s %2d pts (%d-%d-%d) %2d:%2d (%+d)%s%n",
+                System.out.printf("  %d. %-15s %2d pts | W:%d D:%d L:%d | GF:%d GA:%d GD:%+d%s%n",
                         position,
                         team.getName(),
-                        team.getPoints(),
+                        stats.getPoints(),
                         stats.wins,
                         stats.draws,
                         stats.losses,
                         stats.goalsFor,
                         stats.goalsAgainst,
-                        team.getGoalDifference(),
+                        stats.getGoalDifference(),
                         status
                 );
                 position++;
@@ -952,7 +1349,7 @@ public class WorldCupAutomation {
      * Lấy thống kê hiển thị cho team (chỉ để hiển thị, không dùng cho logic)
      */
     private TeamDisplayStats getTeamDisplayStats(String teamName, int tournamentId) throws SQLException {
-        // Tính toán thống kê từ matches thay vì lấy từ teams table
+        // Tính toán thống kê từ matches CHỈ VÒNG BẢNG thay vì lấy từ teams table
         String sql = """
             SELECT 
                 t.id as team_id,
@@ -976,7 +1373,9 @@ public class WorldCupAutomation {
                     WHEN m.team_b_id = t.id THEN m.team_a_score 
                     ELSE 0 END) as goals_against
             FROM teams t
-            LEFT JOIN matches m ON (t.id = m.team_a_id OR t.id = m.team_b_id) AND (m.team_a_score >= 0 AND m.team_b_score >= 0)
+            LEFT JOIN matches m ON (t.id = m.team_a_id OR t.id = m.team_b_id) 
+                AND (m.team_a_score >= 0 AND m.team_b_score >= 0)
+                AND m.match_type = 'GROUP'
             WHERE t.name = ? AND t.tournament_id = ?
             GROUP BY t.id
         """;
@@ -1054,15 +1453,7 @@ public class WorldCupAutomation {
                 String team1 = fallbackRs.getString("team1_name");
                 String team2 = fallbackRs.getString("team2_name");
                 
-                if (team1 != null && team2 != null) {
-                    System.out.println("🥉 ĐỒNG HẠNG BA: " + team1 + " & " + team2);
-                } else if (team1 != null) {
-                    System.out.println("🥉 HẠNG BA: " + team1);
-                } else if (team2 != null) {
-                    System.out.println("🥉 HẠNG BA: " + team2);
-                } else {
-                    System.out.println("🥉 HẠNG BA: Chưa xác định");
-                }
+                
             } else {
                 System.out.println("🥉 HẠNG BA: Chưa xác định");
             }
@@ -1077,6 +1468,16 @@ public class WorldCupAutomation {
      */
     private static class TeamDisplayStats {
         int wins, draws, losses, goalsFor, goalsAgainst;
+        
+        // Tính điểm theo quy định FIFA: Thắng = 3 điểm, Hòa = 1 điểm, Thua = 0 điểm
+        public int getPoints() {
+            return wins * 3 + draws * 1 + losses * 0;
+        }
+        
+        // Tính hiệu số bàn thắng
+        public int getGoalDifference() {
+            return goalsFor - goalsAgainst;
+        }
     }
 
     /**
@@ -1085,7 +1486,7 @@ public class WorldCupAutomation {
      */
     public void createNewTournament() {
         try {
-            System.out.println("🏆 Creating new tournament...");
+            
             
             // Create tournament using Java object creation (OOP)
             int year = DataGenerator.getRandomWorldCupYear();
@@ -1109,7 +1510,7 @@ public class WorldCupAutomation {
             ResultSet rs = pstmt.getGeneratedKeys();
             if (rs.next()) {
                 currentTournamentId = rs.getInt(1);
-                System.out.println("✅ Tournament created: " + tournamentName + " (ID: " + currentTournamentId + ")");
+                
                 
                 // Create groups and teams using OOP
                 createGroupsAndTeams();
@@ -1117,7 +1518,7 @@ public class WorldCupAutomation {
                 // Generate some sample matches
                 generateSampleMatches();
                 
-                System.out.println("✅ Tournament setup completed!");
+                
             }
             
             rs.close();
@@ -1202,7 +1603,7 @@ public class WorldCupAutomation {
             }
         }
         
-        System.out.println("✅ Created 8 groups with 32 teams and players");
+        
     }
     
     /**
@@ -1254,7 +1655,7 @@ public class WorldCupAutomation {
             }
         }
         
-        System.out.println("✅ Generated sample matches with calculated results");
+        
     }
     
     /**
@@ -1320,7 +1721,7 @@ public class WorldCupAutomation {
                 if (rs.next()) {
                     String tournamentName = rs.getString("name");
                     // DataGenerator.randomizeTournament(currentTournamentId, tournamentName); // TODO: Implement
-                    System.out.println("✅ Đã random hóa tournament thành công!");
+                    System.out.println(" Đã random hóa tournament thành công!");
                 }
 
                 rs.close();
@@ -1346,7 +1747,7 @@ public class WorldCupAutomation {
     public void recalculateCurrentTournamentStats() {
         try {
             if (currentTournamentId > 0) {
-                System.out.println("📊 Đang tính toán stats cho tournament hiện tại...");
+                System.out.println("");
 
                 // Lấy tên tournament hiện tại
                 String selectSql = "SELECT name FROM tournaments WHERE id = ?";
@@ -1357,7 +1758,7 @@ public class WorldCupAutomation {
                 if (rs.next()) {
                     String tournamentName = rs.getString("name");
                     statsCalculator.recalculateTournamentStats(currentTournamentId, tournamentName);
-                    System.out.println("✅ Đã tính toán stats cho tournament hiện tại!");
+                    
                 }
 
                 rs.close();
@@ -1367,6 +1768,7 @@ public class WorldCupAutomation {
             System.err.println("❌ Lỗi khi tính toán stats cho tournament hiện tại: " + e.getMessage());
         }
     }
+
 
     /**
      * Hiển thị tất cả tournament stats
@@ -1393,7 +1795,7 @@ public class WorldCupAutomation {
             int updatedRows = pstmt.executeUpdate();
             pstmt.close();
 
-            System.out.println("✅ Đã cập nhật goal_difference cho " + updatedRows + " teams!");
+            System.out.println(" Đã cập nhật goal_difference cho " + updatedRows + " teams!");
 
         } catch (SQLException e) {
             System.err.println("❌ Lỗi khi tính lại goal_difference: " + e.getMessage());
@@ -1422,7 +1824,7 @@ public class WorldCupAutomation {
                 int updatedRows = pstmt.executeUpdate();
                 pstmt.close();
 
-                System.out.println("✅ Đã cập nhật goal_difference cho " + updatedRows + " teams trong tournament hiện tại!");
+                System.out.println(" Đã cập nhật goal_difference cho " + updatedRows + " teams trong tournament hiện tại!");
 
             } else {
                 System.out.println("⚠️ Không có tournament hiện tại để cập nhật!");
@@ -1433,56 +1835,6 @@ public class WorldCupAutomation {
         }
     }
 
-    /**
-     * Hiển thị thống kê goal_difference của tất cả teams
-     */
-    public void displayGoalDifferenceStats() {
-        try {
-            System.out.println("📊 THỐNG KÊ GOAL DIFFERENCE CỦA TẤT CẢ TEAMS");
-            System.out.println("=".repeat(80));
-
-            String sql = """
-                        SELECT t.name as team_name, 
-                               tour.name as tournament_name,
-                               t.goals_for, 
-                               t.goals_against, 
-                               t.goal_difference,
-                               t.points,
-                               t.wins, t.draws, t.losses
-                        FROM teams t
-                        JOIN tournaments tour ON t.tournament_id = tour.id
-                        ORDER BY t.goal_difference DESC, t.points DESC, t.goals_for DESC
-                    """;
-
-            PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery();
-
-            System.out.printf("%-25s %-20s %4s %4s %4s %6s %3s %3s %3s%n",
-                    "TEAM", "TOURNAMENT", "GF", "GA", "GD", "PTS", "W", "D", "L");
-            System.out.println("-".repeat(80));
-
-            while (rs.next()) {
-                System.out.printf("%-25s %-20s %4d %4d %+4d %6d %3d %3d %3d%n",
-                        rs.getString("team_name"),
-                        rs.getString("tournament_name"),
-                        rs.getInt("goals_for"),
-                        rs.getInt("goals_against"),
-                        rs.getInt("goal_difference"),
-                        rs.getInt("points"),
-                        rs.getInt("wins"),
-                        rs.getInt("draws"),
-                        rs.getInt("losses")
-                );
-            }
-
-            rs.close();
-            pstmt.close();
-
-        } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi hiển thị thống kê goal_difference: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
     public void close() {
         if (dbManager != null) {

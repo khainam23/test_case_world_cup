@@ -242,8 +242,9 @@ public class DataGenerator {
         // Generate 11 starting players with specific positions
         String[] startingPositions = {"GK", "CB", "CB", "LB", "RB", "CDM", "CM", "CAM", "LW", "RW", "ST"};
 
+        // Use fixed jersey numbers 1-11 for starting players to avoid conflicts
         for (int i = 0; i < 11; i++) {
-            int jerseyNumber = generateUniqueJerseyNumber(usedNumbers, 1, 11);
+            int jerseyNumber = i + 1; // Jersey numbers 1, 2, 3, ..., 11
             String name = getRandomName();
             String position = startingPositions[i];
 
@@ -266,16 +267,10 @@ public class DataGenerator {
 
     public static List<Player> generateSubstitutePlayers() {
         List<Player> players = new ArrayList<>();
-        Set<Integer> usedNumbers = new HashSet<>();
 
-        // Add numbers 1-11 as used (for starting players)
-        for (int i = 1; i <= 11; i++) {
-            usedNumbers.add(i);
-        }
-
-        // Generate 11 substitute players (positions 12-22)
+        // Generate 11 substitute players with fixed jersey numbers 12-22
         for (int i = 0; i < 11; i++) {
-            int jerseyNumber = generateUniqueJerseyNumber(usedNumbers, 12, 22);
+            int jerseyNumber = i + 12; // Jersey numbers 12, 13, 14, ..., 22
             String name = getRandomName();
             String position = getRandomPosition();
 

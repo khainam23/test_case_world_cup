@@ -186,6 +186,25 @@ public class TournamentService {
     }
     
     /**
+     * Lấy bảng xếp hạng của tất cả các bảng đấu với đầy đủ players, sắp xếp bằng Java
+     * Sử dụng cho knockout stage
+     */
+    public Map<String, List<Team>> getAllGroupStandingsWithPlayersCalculatedInJava(int tournamentId) throws SQLException {
+        Map<String, List<Team>> groupStandings = new HashMap<>();
+        
+        // Lấy tất cả tên bảng
+        List<String> groupNames = getAllGroupNames(tournamentId);
+        
+        // Tính toán bảng xếp hạng cho từng bảng với đầy đủ players
+        for (String groupName : groupNames) {
+            List<Team> teams = teamService.getTeamsByGroupSortedWithPlayers(tournamentId, groupName);
+            groupStandings.put(groupName, teams);
+        }
+        
+        return groupStandings;
+    }
+    
+    /**
      * Lấy tất cả tên bảng đấu
      */
     private List<String> getAllGroupNames(int tournamentId) throws SQLException {
@@ -259,13 +278,8 @@ public class TournamentService {
      * Cập nhật champion, runner-up và 2 đội đồng hạng 3 cho tournament
      */
     public void updateTournamentWinners(int tournamentId, Integer championId, Integer runnerUpId, Integer thirdPlaceId01, Integer thirdPlaceId02) throws SQLException {
-        System.out.println("🔍 TournamentService.updateTournamentWinners được gọi:");
-        System.out.println("   Tournament ID: " + tournamentId);
-        System.out.println("   Champion ID: " + championId);
-        System.out.println("   Runner-up ID: " + runnerUpId);
-        System.out.println("   Third place ID 01: " + thirdPlaceId01);
-        System.out.println("   Third place ID 02: " + thirdPlaceId02);
-        
+
+    
         // Kiểm tra xem tournament_stats record có tồn tại không
         ensureTournamentStatsExists(tournamentId);
         
@@ -286,16 +300,6 @@ public class TournamentService {
         int rowsUpdated = pstmt.executeUpdate();
         pstmt.close();
         
-        if (rowsUpdated > 0) {
-            System.out.println("✅ Đã cập nhật thông tin champion, runner-up và 2 đội đồng hạng 3 cho tournament ID: " + tournamentId);
-            if (thirdPlaceId02 != null) {
-                System.out.println("🥉 Đã lưu 2 đội đồng hạng 3: ID " + thirdPlaceId01 + " và ID " + thirdPlaceId02);
-            } else {
-                System.out.println("🥉 Đã lưu 1 đội hạng 3: ID " + thirdPlaceId01);
-            }
-        } else {
-            System.out.println("⚠️ Không tìm thấy tournament_stats record cho tournament ID: " + tournamentId);
-        }
     }
     
     /**
@@ -324,7 +328,7 @@ public class TournamentService {
         pstmt.close();
         
         if (rowsUpdated > 0) {
-            System.out.println("✅ Đã cập nhật champion cho tournament ID: " + tournamentId);
+            System.out.println(" Đã cập nhật champion cho tournament ID: " + tournamentId);
         }
     }
     
@@ -344,7 +348,7 @@ public class TournamentService {
         pstmt.close();
         
         if (rowsUpdated > 0) {
-            System.out.println("✅ Đã cập nhật runner-up cho tournament ID: " + tournamentId);
+            System.out.println(" Đã cập nhật runner-up cho tournament ID: " + tournamentId);
         }
     }
     
@@ -364,7 +368,7 @@ public class TournamentService {
         pstmt.close();
         
         if (rowsUpdated > 0) {
-            System.out.println("✅ Đã cập nhật third place cho tournament ID: " + tournamentId);
+            System.out.println(" Đã cập nhật third place cho tournament ID: " + tournamentId);
         }
     }
     
@@ -395,7 +399,7 @@ public class TournamentService {
             insertPstmt.executeUpdate();
             insertPstmt.close();
             
-            System.out.println("✅ Đã tạo tournament_stats record mới cho tournament ID: " + tournamentId);
+            
         }
     }
     

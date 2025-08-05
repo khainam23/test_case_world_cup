@@ -17,7 +17,7 @@ public class Tournament {
     private List<Team> teamList;
     private List<Group> groupList;
     private List<Player> players;
-    private Random random = new Random();
+
 
     public int getId() {
         return id;
@@ -61,10 +61,6 @@ public class Tournament {
 
     public List<Player> getPlayers() {
         return players;
-    }
-
-    public Random getRandom() {
-        return random;
     }
 }
 

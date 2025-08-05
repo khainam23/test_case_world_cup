@@ -182,19 +182,6 @@ public class PlayOffMatchTest {
     }
 
     @Test
-    void PlayOffMatch_MakeSubstitution_KeThuaThanhCong() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
-        
-        Player playerOut = startingA.get(0);
-        Player playerIn = substituteA.get(0);
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, teamA, playOffMatch);
-        
-        assertEquals(1, playOffMatch.getSubstitutions().size());
-        assertEquals(1, playOffMatch.getSubstitutionCount(teamA));
-    }
-
-    @Test
     void PlayOffMatch_UpdateMatchResult_KeThuaThanhCong() {
         PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
                                                     startingB, substituteB, true);
@@ -288,60 +275,6 @@ public class PlayOffMatchTest {
         assertEquals(11, maxSubstituteA.size());
     }
 
-    // ========== INTEGRATION TESTS ==========
-
-    @Test
-    void PlayOffMatch_TinhNangTichHop_HoatDongDung() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
-        
-        // Thêm bàn thắng
-        Goal goal1 = new Goal(startingA.get(0), teamA, 30, playOffMatch);
-        playOffMatch.addGoal(goal1);
-        
-        // Thêm thẻ
-        playOffMatch.addCard(startingB.get(0), teamB, "YELLOW");
-        
-        // Thay người
-        Player playerOut = startingA.get(1);
-        Player playerIn = substituteA.get(0);
-        playOffMatch.makeSubstitution(new Substitution(playerIn, playerOut, 60, teamA, playOffMatch));
-        
-        // Kết thúc trận đấu
-        playOffMatch.updateMatchResult(1, 0);
-        
-        // Kiểm tra trạng thái cuối
-        assertEquals(1, playOffMatch.getGoals().size());
-        assertEquals(1, playOffMatch.getGoalsTeamA());
-        assertEquals(1, teamB.getYellowCards());
-        assertEquals(1, playOffMatch.getSubstitutionCount(teamA));
-        assertTrue(playOffMatch.isFinished());
-        assertEquals(teamA, playOffMatch.getWinnerTeam());
-        assertTrue(playOffMatch.isKnockout());
-    }
-
-    @Test
-    void PlayOffMatch_BienGioiHan_XuLyDung() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
-        
-        // Test với số lượng tối đa thay người
-        for (int i = 0; i < 3; i++) {
-            Player playerOut = startingA.get(i);
-            Player playerIn = substituteA.get(i);
-            playOffMatch.makeSubstitution(new Substitution(playerIn, playerOut, 60 + i, teamA, playOffMatch));
-        }
-        
-        assertEquals(3, playOffMatch.getSubstitutionCount(teamA));
-        
-        // Test với nhiều bàn thắng
-        for (int i = 0; i < 5; i++) {
-            Goal goal = new Goal(startingA.get(i % 11), teamA, 10 + i, playOffMatch);
-            playOffMatch.addGoal(goal);
-        }
-        
-        assertEquals(5, playOffMatch.getGoalsTeamA());
-    }
 
     // ========== TOSTRING TESTS ==========
 

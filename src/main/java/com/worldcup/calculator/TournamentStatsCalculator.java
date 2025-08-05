@@ -31,7 +31,7 @@ public class TournamentStatsCalculator {
      */
     public void recalculateAllTournamentStats() {
         try {
-            System.out.println("🔄 Bắt đầu tính toán lại tất cả tournament stats...");
+            
 
             // Lấy tất cả tournaments
             String selectTournamentsSql = "SELECT id, name FROM tournaments ORDER BY id";
@@ -50,7 +50,7 @@ public class TournamentStatsCalculator {
             rs.close();
             stmt.close();
 
-            System.out.println("✅ Đã tính toán lại stats cho " + count + " tournaments!");
+            System.out.println(" Đã tính toán lại stats cho " + count + " tournaments!");
 
         } catch (SQLException e) {
             System.err.println("❌ Lỗi khi tính toán tournament stats: " + e.getMessage());
@@ -63,16 +63,13 @@ public class TournamentStatsCalculator {
      * Sử dụng TournamentService để tính toán bằng Java
      */
     public void recalculateTournamentStats(int tournamentId, String tournamentName) throws SQLException {
-        System.out.println("🏆 Đang tính toán stats cho: " + tournamentName + " (ID: " + tournamentId + ")");
+        
 
         // Sử dụng TournamentService để tính toán tất cả stats bằng Java
         TournamentStats stats = tournamentService.calculateTournamentStats(tournamentId);
 
         // Cập nhật hoặc tạo mới record trong tournament_stats
         updateTournamentStatsFromService(tournamentId, stats);
-
-        // Hiển thị kết quả
-        displayTournamentStatsFromService(tournamentName, stats);
     }
 
     /**
@@ -145,26 +142,7 @@ public class TournamentStatsCalculator {
             insertStmt.close();
         }
     }
-
-    /**
-     * Hiển thị kết quả tính toán từ TournamentService
-     */
-    private void displayTournamentStatsFromService(String tournamentName, TournamentStats stats) {
-        System.out.println("   📊 Kết quả tính toán:");
-        System.out.println("      🏟️  Tổng số trận: " + stats.totalMatches);
-        System.out.println("      ⚽ Tổng số bàn thắng: " + stats.totalGoals);
-        System.out.println("      🟨 Tổng số thẻ vàng: " + stats.totalYellowCards);
-        System.out.println("      🟥 Tổng số thẻ đỏ: " + stats.totalRedCards);
-        System.out.println("      🔄 Tổng số thay người: " + stats.totalSubstitutions);
-
-        if (stats.topScorerName != null && stats.topScorerGoals > 0) {
-            System.out.println("      👑 Vua phá lưới: " + stats.topScorerName + " (" + stats.topScorerGoals + " bàn)");
-        } else {
-            System.out.println("      👑 Vua phá lưới: Chưa có");
-        }
-        System.out.println();
-    }
-
+   
     /**
      * Tính tổng số trận đấu của tournament
      */
@@ -403,27 +381,6 @@ public class TournamentStatsCalculator {
     }
 
     /**
-     * Hiển thị kết quả tính toán
-     */
-    private void displayTournamentStats(String tournamentName, int totalMatches, int totalGoals,
-                                      int totalYellowCards, int totalRedCards, int totalSubstitutions,
-                                      TopScorer topScorer) {
-        System.out.println("   📊 Kết quả tính toán:");
-        System.out.println("      🏟️  Tổng số trận: " + totalMatches);
-        System.out.println("      ⚽ Tổng số bàn thắng: " + totalGoals);
-        System.out.println("      🟨 Tổng số thẻ vàng: " + totalYellowCards);
-        System.out.println("      🟥 Tổng số thẻ đỏ: " + totalRedCards);
-        System.out.println("      🔄 Tổng số thay người: " + totalSubstitutions);
-
-        if (topScorer.playerId > 0) {
-            System.out.println("      👑 Vua phá lưới: " + topScorer.playerName + " (" + topScorer.goals + " bàn)");
-        } else {
-            System.out.println("      👑 Vua phá lưới: Chưa có");
-        }
-        System.out.println();
-    }
-
-    /**
      * Hiển thị tất cả tournament stats
      */
     public void displayAllTournamentStats() {
@@ -445,7 +402,7 @@ public class TournamentStatsCalculator {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                System.out.printf("🏆 %-25s | %d | %-15s%n",
+                System.out.printf("%-25s | %d | %-15s%n",
                     rs.getString("name"),
                     rs.getInt("year"),
                     rs.getString("host_country"));
