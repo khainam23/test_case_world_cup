@@ -254,7 +254,6 @@ public class TeamRepositoryImpl implements TeamRepository {
             rs.getString("coach"),
             assistantCoaches,
             rs.getString("medical_staff"),
-            players,
             rs.getBoolean("is_host")
         );
         

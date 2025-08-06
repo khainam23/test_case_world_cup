@@ -28,9 +28,9 @@ public class PlayOffMatchTest {
 
         // Tạo các đội
         teamA = new Team("Brazil", "South America", "Coach A", 
-                        List.of("Assistant A"), "Medical A", playersA, false);
+                        List.of("Assistant A"), "Medical A", startingA, substituteA, false);
         teamB = new Team("Argentina", "South America", "Coach B", 
-                        List.of("Assistant B"), "Medical B", playersB, false);
+                        List.of("Assistant B"), "Medical B", startingB, substituteB, false);
     }
 
     private List<Player> createPlayerList(String baseName, int count) {
@@ -45,8 +45,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatchConstructor_ThamSoHopLe_KhoiTaoThanhCong() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium A", "Referee A", true);
         
         // Kiểm tra các thuộc tính kế thừa từ Match
         assertEquals(teamA, playOffMatch.getTeamA());
@@ -60,8 +59,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatchConstructor_KhongPhaiKnockout_KhoiTaoThanhCong() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, false);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium B", "Referee B", false);
         
         assertFalse(playOffMatch.isKnockout());
         assertEquals("GROUP", playOffMatch.getMatchType());
@@ -71,95 +69,54 @@ public class PlayOffMatchTest {
     @Test
     void PlayOffMatchConstructor_TeamANull_ThrowException() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(null, teamB, startingA, substituteA, startingB, substituteB, true);
+            new PlayOffMatch(null, teamB, "Stadium", "Referee", true);
         });
     }
 
     @Test
     void PlayOffMatchConstructor_TeamBNull_ThrowException() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(teamA, null, startingA, substituteA, startingB, substituteB, true);
+            new PlayOffMatch(teamA, null, "Stadium", "Referee", true);
         });
     }
 
     @Test
     void PlayOffMatchConstructor_CaHaiTeamNull_ThrowException() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(null, null, startingA, substituteA, startingB, substituteB, true);
+            new PlayOffMatch(null, null, "Stadium", "Referee", true);
         });
     }
 
     @Test
     void PlayOffMatchConstructor_CungMotTeam_ThrowException() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(teamA, teamA, startingA, substituteA, startingB, substituteB, true);
+            new PlayOffMatch(teamA, teamA, "Stadium", "Referee", true);
         });
     }
 
-    // Test phân hoạch giá trị biên cho số lượng cầu thủ đá chính
-    @Test
-    void PlayOffMatchConstructor_TeamAStarting10_ThrowException() {
-        List<Player> starting10 = startingA.subList(0, 10);
-        assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(teamA, teamB, starting10, substituteA, startingB, substituteB, true);
-        });
-    }
 
     @Test
     void PlayOffMatchConstructor_TeamAStarting11_KhoiTaoThanhCong() {
         // Đúng 11 cầu thủ - biên hợp lệ
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         assertNotNull(playOffMatch);
         assertEquals(teamA, playOffMatch.getTeamA());
     }
 
-    @Test
-    void PlayOffMatchConstructor_TeamAStarting12_ThrowException() {
-        List<Player> starting12 = new ArrayList<>(startingA);
-        starting12.add(playersA.get(16));
-        assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(teamA, teamB, starting12, substituteA, startingB, substituteB, true);
-        });
-    }
-
-    @Test
-    void PlayOffMatchConstructor_TeamBStarting0_ThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(teamA, teamB, startingA, substituteA, new ArrayList<>(), substituteB, true);
-        });
-    }
-
-    // Test phân hoạch giá trị biên cho số lượng cầu thủ dự bị
-    @Test
-    void PlayOffMatchConstructor_TeamASubstitute4_ThrowException() {
-        List<Player> substitute4 = substituteA.subList(0, 4);
-        assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(teamA, teamB, startingA, substitute4, startingB, substituteB, true);
-        });
-    }
 
     @Test
     void PlayOffMatchConstructor_TeamASubstitute5_KhoiTaoThanhCong() {
         // Đúng 5 cầu thủ dự bị - biên dưới hợp lệ
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         assertNotNull(playOffMatch);
     }
 
-    @Test
-    void PlayOffMatchConstructor_TeamBSubstitute0_ThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new PlayOffMatch(teamA, teamB, startingA, substituteA, startingB, new ArrayList<>(), true);
-        });
-    }
 
     // ========== INHERITANCE FUNCTIONALITY TESTS ==========
 
     @Test
     void PlayOffMatch_AddGoal_KeThuaThanhCong() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         Goal goal = new Goal(startingA.get(0), teamA, 30, playOffMatch);
         playOffMatch.addGoal(goal);
@@ -171,8 +128,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_AddCard_KeThuaThanhCong() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         Player player = startingA.get(0);
         playOffMatch.addCard(player, teamA, "YELLOW");
@@ -183,8 +139,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_UpdateMatchResult_KeThuaThanhCong() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         playOffMatch.updateMatchResult(2, 1);
         
@@ -197,8 +152,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_EndMatch_KeThuaThanhCong() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         assertFalse(playOffMatch.isFinished());
         playOffMatch.endMatch();
@@ -209,8 +163,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_KnockoutTrue_MatchTypeKnockout() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         assertTrue(playOffMatch.isKnockout());
         assertEquals("KNOCKOUT", playOffMatch.getMatchType());
@@ -218,8 +171,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_KnockoutFalse_MatchTypeGroup() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, false);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", false);
         
         assertFalse(playOffMatch.isKnockout());
         assertEquals("GROUP", playOffMatch.getMatchType());
@@ -229,8 +181,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_PolymorphismAsMatch_HoatDongDung() {
-        Match match = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                      startingB, substituteB, true);
+        Match match = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         // Sử dụng như Match object
         assertEquals(teamA, match.getTeamA());
@@ -252,8 +203,7 @@ public class PlayOffMatchTest {
         List<Player> minStartingB = playersB.subList(0, 11);
         List<Player> minSubstituteB = playersB.subList(11, 16);
         
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, minStartingA, minSubstituteA, 
-                                                    minStartingB, minSubstituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         assertNotNull(playOffMatch);
         assertEquals(11, minStartingA.size());
@@ -268,8 +218,7 @@ public class PlayOffMatchTest {
         List<Player> maxStartingB = playersB.subList(0, 11);
         List<Player> maxSubstituteB = playersB.subList(11, 22);
         
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, maxStartingA, maxSubstituteA, 
-                                                    maxStartingB, maxSubstituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         assertNotNull(playOffMatch);
         assertEquals(11, maxSubstituteA.size());
@@ -280,8 +229,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_ToString_ChuoiHopLe() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         String result = playOffMatch.toString();
         
@@ -293,8 +241,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_ToStringVoiKetQua_ChuoiHopLe() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         playOffMatch.updateMatchResult(3, 2);
         String result = playOffMatch.toString();
@@ -307,8 +254,7 @@ public class PlayOffMatchTest {
 
     @Test
     void PlayOffMatch_CacTinhHuongDacBiet_XuLyDung() {
-        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, startingA, substituteA, 
-                                                    startingB, substituteB, true);
+        PlayOffMatch playOffMatch = new PlayOffMatch(teamA, teamB, "Stadium", "Referee", true);
         
         // Test với kết quả hòa trong knockout
         playOffMatch.updateMatchResult(2, 2);

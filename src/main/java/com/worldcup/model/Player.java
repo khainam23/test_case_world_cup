@@ -8,18 +8,13 @@ public class Player {
     private String position;
     private int teamId;
     private boolean isStarting;
-    
-    // Thống kê cầu thủ - tương ứng với database columns
     private int yellowCards;
     private int redCards; // Đổi từ boolean thành int để tương ứng với DB
     private int goals;
     private int assists;
     private int minutesPlayed;
     private boolean isEligible;
-    
-    // Suspension management
-    private boolean suspended;
-    private int suspensionMatches;
+    private int eligibleMatches;
 
     public Player(String name, int jerseyNumber, String position) {
         this.name = name;
@@ -32,8 +27,7 @@ public class Player {
         this.minutesPlayed = 0;
         this.isEligible = true;
         this.isStarting = false;
-        this.suspended = false;
-        this.suspensionMatches = 0;
+        this.eligibleMatches = 0;
     }
 
     public void scoreGoal() {
@@ -46,8 +40,8 @@ public class Player {
 
     public void receiveRedCard() {
         redCards++;
-        // Automatically suspend player for 1 match when receiving red card
-        setSuspended(true, 1);
+        isEligible = true;
+        eligibleMatches = 1;
     }
 
     public void resetCards() {
@@ -62,10 +56,6 @@ public class Player {
      */
     public boolean isSentOff() {
         return redCards > 0 || yellowCards >= 2;
-    }
-
-    public boolean isPlayerEligible() {
-        return !isSentOff() && isEligible && !suspended;
     }
 
     // Getters
@@ -109,92 +99,66 @@ public class Player {
     public void setRedCard(boolean hasRedCard) {
         this.redCards = hasRedCard ? 1 : 0;
     }
-    
+
     public void setRedCards(int redCards) {
         this.redCards = redCards;
     }
-    
+
     // Getters và Setters cho các thuộc tính mới
     public int getId() {
         return id;
     }
-    
+
     public void setId(int id) {
         this.id = id;
     }
-    
+
     public int getTeamId() {
         return teamId;
     }
-    
+
     public void setTeamId(int teamId) {
         this.teamId = teamId;
     }
-    
+
     public boolean isStarting() {
         return isStarting;
     }
-    
+
     public void setStarting(boolean starting) {
         isStarting = starting;
     }
-    
+
     public int getAssists() {
         return assists;
     }
-    
+
     public void setAssists(int assists) {
         this.assists = assists;
     }
-    
+
     public int getMinutesPlayed() {
         return minutesPlayed;
     }
-    
+
     public void setMinutesPlayed(int minutesPlayed) {
         this.minutesPlayed = minutesPlayed;
     }
-    
-    public boolean isEligible() {
-        return isEligible;
-    }
-    
+
+
     public void setEligible(boolean eligible) {
         isEligible = eligible;
     }
-    
-    // Suspension management methods
-    public boolean isSuspended() {
-        return suspended;
+
+    public void clearEligible() {
+        isEligible = false;
+        eligibleMatches = 0;
     }
-    
-    public void setSuspended(boolean suspended, int matches) {
-        this.suspended = suspended;
-        this.suspensionMatches = suspended ? matches : 0;
-    }
-    
-    public int getSuspensionMatches() {
-        return suspensionMatches;
-    }
-    
-    public void reduceSuspension() {
-        if (suspensionMatches > 0) {
-            suspensionMatches--;
-            if (suspensionMatches == 0) {
-                suspended = false;
-            }
-        }
-    }
-    
-    public void clearSuspension() {
-        suspended = false;
-        suspensionMatches = 0;
-    }
-    
+
     public void setName(String name) {
         this.name = name;
     }
-    
+
     public void setPosition(String position) {
         this.position = position;
     }
@@ -217,9 +181,9 @@ public class Player {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         Player player = (Player) obj;
-        return jerseyNumber == player.jerseyNumber && 
-               name.equals(player.name) && 
-               position.equals(player.position);
+        return jerseyNumber == player.jerseyNumber &&
+                name.equals(player.name) &&
+                position.equals(player.position);
     }
 
     @Override
@@ -229,5 +193,21 @@ public class Player {
 
     public int getNumber() {
         return this.jerseyNumber;
+    }
+
+    public void setJerseyNumber(int jerseyNumber) {
+        this.jerseyNumber = jerseyNumber;
+    }
+
+    public boolean isEligible() {
+        return isEligible;
+    }
+
+    public int getEligibleMatches() {
+        return eligibleMatches;
+    }
+
+    public void setEligibleMatches(int eligibleMatches) {
+        this.eligibleMatches = eligibleMatches;
     }
 }

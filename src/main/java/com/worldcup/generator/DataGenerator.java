@@ -1,9 +1,13 @@
 package com.worldcup.generator;
 
+import com.worldcup.constant.Constant;
+import com.worldcup.model.Group;
 import com.worldcup.model.Player;
 import com.worldcup.model.Team;
-import com.worldcup.constant.Constant;
+
+import java.time.LocalDate;
 import java.util.*;
+
 import static com.worldcup.constant.Constant.*;
 
 public class DataGenerator {
@@ -56,19 +60,10 @@ public class DataGenerator {
     }
 
     // Các năm World Cup thực tế từ 1990 đến 2026
-    public final int[] WORLD_CUP_YEARS = {
-            1990, 1994, 1998, 2002, 2006, 2010, 2014, 2018, 2022, 2026
-    };
+    public final int[] WORLD_CUP_YEARS = {1990, 1994, 1998, 2002, 2006, 2010, 2014, 2018, 2022, 2026};
 
     // Danh sách các quốc gia có thể tổ chức World Cup
-    public final String[] HOST_COUNTRIES = {
-            "Brazil", "Argentina", "Germany", "France", "Spain", "Italy", "England", "Netherlands",
-            "Portugal", "Belgium", "Croatia", "Uruguay", "Colombia", "Mexico", "Japan", "South Korea",
-            "Morocco", "Senegal", "Ghana", "Nigeria", "Australia", "Denmark", "Switzerland", "Poland",
-            "Austria", "Czech Republic", "Serbia", "Ecuador", "Peru", "Chile", "Canada", "USA",
-            "Russia", "Qatar", "China", "India", "Thailand", "Vietnam", "Indonesia", "Malaysia",
-            "Saudi Arabia", "UAE", "Egypt", "South Africa", "Kenya", "Algeria", "Tunisia", "Cameroon"
-    };
+    public final String[] HOST_COUNTRIES = {"Brazil", "Argentina", "Germany", "France", "Spain", "Italy", "England", "Netherlands", "Portugal", "Belgium", "Croatia", "Uruguay", "Colombia", "Mexico", "Japan", "South Korea", "Morocco", "Senegal", "Ghana", "Nigeria", "Australia", "Denmark", "Switzerland", "Poland", "Austria", "Czech Republic", "Serbia", "Ecuador", "Peru", "Chile", "Canada", "USA", "Russia", "Qatar", "China", "India", "Thailand", "Vietnam", "Indonesia", "Malaysia", "Saudi Arabia", "UAE", "Egypt", "South Africa", "Kenya", "Algeria", "Tunisia", "Cameroon"};
 
     /**
      * Random một năm World Cup thực tế
@@ -85,8 +80,13 @@ public class DataGenerator {
     public void randomizeTournament(int currentTournamentId, String tournamentName) {
     }
 
-    public static String[] getGroupsName() {
-        return Constant.GROUP_NAME;
+    public static List<Group> getGroups() {
+        List<Group> groups = new ArrayList<>();
+
+        for (String groupName : Constant.GROUP_NAME) {
+            groups.add(new Group(groupName));
+        }
+        return groups;
     }
 
     // Generate random match events
@@ -127,14 +127,7 @@ public class DataGenerator {
      * Random một quốc gia tổ chức
      */
     public static String getRandomHostCountry() {
-        String[] HOST_COUNTRIES = {
-                "Brazil", "Argentina", "Germany", "France", "Spain", "Italy", "England", "Netherlands",
-                "Portugal", "Belgium", "Croatia", "Uruguay", "Colombia", "Mexico", "Japan", "South Korea",
-                "Morocco", "Senegal", "Ghana", "Nigeria", "Australia", "Denmark", "Switzerland", "Poland",
-                "Austria", "Czech Republic", "Serbia", "Ecuador", "Peru", "Chile", "Canada", "USA",
-                "Russia", "Qatar", "China", "India", "Thailand", "Vietnam", "Indonesia", "Malaysia",
-                "Saudi Arabia", "UAE", "Egypt", "South Africa", "Kenya", "Algeria", "Tunisia", "Cameroon"
-        };
+        String[] HOST_COUNTRIES = {"Brazil", "Argentina", "Germany", "France", "Spain", "Italy", "England", "Netherlands", "Portugal", "Belgium", "Croatia", "Uruguay", "Colombia", "Mexico", "Japan", "South Korea", "Morocco", "Senegal", "Ghana", "Nigeria", "Australia", "Denmark", "Switzerland", "Poland", "Austria", "Czech Republic", "Serbia", "Ecuador", "Peru", "Chile", "Canada", "USA", "Russia", "Qatar", "China", "India", "Thailand", "Vietnam", "Indonesia", "Malaysia", "Saudi Arabia", "UAE", "Egypt", "South Africa", "Kenya", "Algeria", "Tunisia", "Cameroon"};
         return HOST_COUNTRIES[random.nextInt(HOST_COUNTRIES.length)];
     }
 
@@ -142,23 +135,16 @@ public class DataGenerator {
      * Tạo ngày bắt đầu và kết thúc cho tournament dựa trên năm
      * World Cup thường diễn ra vào tháng 6-7 (hoặc 11-12 cho Qatar 2022)
      */
-    public static String[] generateTournamentDates(int year) {
-        java.time.LocalDate startDate;
-        java.time.LocalDate endDate;
-
-
-        // Các World Cup khác diễn ra vào mùa hè (tháng 6-7)
-        // Random ngày bắt đầu từ 10/6 đến 20/6
+    public static LocalDate[] generateTournamentDates(int year) {
+        // Ngày bắt đầu ngẫu nhiên từ 10 đến 20/6
         int startDay = 10 + random.nextInt(11); // 10-20
-        startDate = java.time.LocalDate.of(year, 6, startDay);
-        endDate = startDate.plusDays(28 + random.nextInt(5)); // 28-32 ngày
+        LocalDate startDate = LocalDate.of(year, 6, startDay);
 
+        // Giải kéo dài 28 đến 32 ngày
+        LocalDate endDate = startDate.plusDays(28 + random.nextInt(5)); // 28-32 ngày
 
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd");
-        return new String[]{
-                startDate.format(formatter),
-                endDate.format(formatter)
-        };
+        // Trả về mảng LocalDate
+        return new LocalDate[]{startDate, endDate};
     }
 
     // Generate tournament name
@@ -175,7 +161,7 @@ public class DataGenerator {
     }
 
 
-    public static List<Team> generateRandomTeams(int count) {
+    public static List<Team> generateTeams(int count) {
         if (count > COUNTRIES.length) {
             throw new IllegalArgumentException("Cannot generate more teams than available countries");
         }
@@ -192,18 +178,43 @@ public class DataGenerator {
             List<String> assistants = generateAssistantCoaches();
             String medicalStaff = "Dr. " + getRandomName();
 
-            // Generate players
-            List<Player> startingPlayers = generateStartingPlayers();
-            List<Player> substitutePlayers = generateSubstitutePlayers();
-
             boolean isHost = (i == 0); // First team is host
 
-            Team team = new Team(countryName, region, coach, assistants, medicalStaff,
-                    startingPlayers, substitutePlayers, isHost);
+            Team team = new Team(countryName, region, coach, assistants, medicalStaff, isHost);
             teams.add(team);
         }
 
+        return DataGenerator.generatePlayers(teams);
+    }
+
+    public static List<Team> generatePlayers(List<Team> teams) {
+        for (Team team : teams) {
+            List<Player> players = generatePlayers();
+            team.setPlayers(players);
+        }
         return teams;
+    }
+
+    private static List<Player> generatePlayers() {
+        List<Player> players = new ArrayList<>();
+        Set<String> usedNames = new HashSet<>();
+
+        for (int i = 0; i < 22; i++) {
+            int jerseyNumber = i + 1;
+            String name = getRandomName();
+            
+            // Đảm bảo tên không trùng lặp trong team
+            while (usedNames.contains(name)) {
+                name = getRandomName();
+            }
+            usedNames.add(name);
+            
+            String position = getRandomPosition();
+            Player player = new Player(name, jerseyNumber, position);
+            players.add(player);
+        }
+
+        return players;
     }
 
     public static String getRandomRegion() {
@@ -225,53 +236,30 @@ public class DataGenerator {
         return assistants;
     }
 
+
     public static String getRandomName() {
         String firstName = FIRST_NAMES[random.nextInt(FIRST_NAMES.length)];
         String lastName = LAST_NAMES[random.nextInt(LAST_NAMES.length)];
         return firstName + " " + lastName;
     }
 
+    // random trong một team
+    public static String getRandomName(Team team) {
+        String name = team.getPlayers().get(random.nextInt(team.getPlayers().size())).getName();
+        return name;
+    }
+
     public static String getRandomPosition() {
         return POSITIONS[random.nextInt(POSITIONS.length)];
     }
 
-    public static List<Player> generateStartingPlayers() {
+    public static List<Player> generateStartingPlayers(Team team) {
         List<Player> players = new ArrayList<>();
-        Set<Integer> usedNumbers = new HashSet<>();
-
-        // Generate 11 starting players with specific positions
-        String[] startingPositions = {"GK", "CB", "CB", "LB", "RB", "CDM", "CM", "CAM", "LW", "RW", "ST"};
 
         // Use fixed jersey numbers 1-11 for starting players to avoid conflicts
         for (int i = 0; i < 11; i++) {
             int jerseyNumber = i + 1; // Jersey numbers 1, 2, 3, ..., 11
-            String name = getRandomName();
-            String position = startingPositions[i];
-
-            Player player = new Player(name, jerseyNumber, position);
-            players.add(player);
-        }
-
-        return players;
-    }
-
-    public static int generateUniqueJerseyNumber(Set<Integer> usedNumbers, int min, int max) {
-        int number;
-        do {
-            number = random.nextInt(max - min + 1) + min;
-        } while (usedNumbers.contains(number));
-
-        usedNumbers.add(number);
-        return number;
-    }
-
-    public static List<Player> generateSubstitutePlayers() {
-        List<Player> players = new ArrayList<>();
-
-        // Generate 11 substitute players with fixed jersey numbers 12-22
-        for (int i = 0; i < 11; i++) {
-            int jerseyNumber = i + 12; // Jersey numbers 12, 13, 14, ..., 22
-            String name = getRandomName();
+            String name = getRandomName(team);
             String position = getRandomPosition();
 
             Player player = new Player(name, jerseyNumber, position);
@@ -281,39 +269,19 @@ public class DataGenerator {
         return players;
     }
 
-    /**
-     * Generate specified number of teams with players
-     * Demonstrates OOP object creation
-     */
-    public static List<Team> generateTeams(int count) {
-        List<Team> teams = new ArrayList<>();
-        List<String> usedCountries = new ArrayList<>();
-        
-        for (int i = 0; i < count; i++) {
-            // Get unique country name
-            String countryName;
-            do {
-                countryName = COUNTRIES[random.nextInt(COUNTRIES.length)];
-            } while (usedCountries.contains(countryName) && usedCountries.size() < COUNTRIES.length);
-            
-            usedCountries.add(countryName);
-            
-            String region = getRandomRegion();
-            String coach = getRandomCoach();
-            List<String> assistants = generateAssistantCoaches();
-            String medicalStaff = "Dr. " + getRandomName();
-            boolean isHost = random.nextDouble() < 0.1; // 10% chance of being host
-            
-            // Generate players for the team
-            List<Player> startingPlayers = generateStartingPlayers();
-            List<Player> substitutePlayers = generateSubstitutePlayers();
-            
-            Team team = new Team(countryName, region, coach, assistants, medicalStaff,
-                    startingPlayers, substitutePlayers, isHost);
-            teams.add(team);
-        }
-        
-        return teams;
-    }
+    public static List<Player> generateSubstitutePlayers(Team team) {
+        List<Player> players = new ArrayList<>();
 
+        // Generate 11 substitute players with fixed jersey numbers 12-22
+        for (int i = 0; i < 5; i++) {
+            int jerseyNumber = i + 12; // Jersey numbers 12, 13, 14, ..., 22
+            String name = getRandomName(team);
+            String position = getRandomPosition();
+
+            Player player = new Player(name, jerseyNumber, position);
+            players.add(player);
+        }
+
+        return players;
+    }
 }

@@ -1,5 +1,6 @@
 package com.worldcup.service;
 
+import com.worldcup.model.Group;
 import com.worldcup.model.Team;
 import com.worldcup.database.DatabaseManager;
 import com.worldcup.service.PlayerService.PlayerGoalStats;
@@ -38,7 +39,7 @@ public class TournamentService {
         stats.totalYellowCards = cardStats.yellowCards;
         stats.totalRedCards = cardStats.redCards;
         
-        // 4. Calculate total substitutions using Java
+        // 4. tỉnh tổng thay thế người
         stats.totalSubstitutions = calculateTotalSubstitutions(tournamentId);
         
         // 5. Tìm vua phá lưới bằng Java
@@ -48,6 +49,14 @@ public class TournamentService {
             stats.topScorerId = topScorer.getPlayerId();
             stats.topScorerName = topScorer.getPlayerName();
             stats.topScorerGoals = topScorer.getGoals();
+            
+            
+        } else {
+            // Không có cầu thủ nào ghi bàn
+            stats.topScorerId = 0;
+            stats.topScorerName = null;
+            stats.topScorerGoals = 0;
+            System.out.printf("ℹ️ Tournament %d: Chưa có cầu thủ nào ghi bàn\n", tournamentId);
         }
         
         return stats;
@@ -186,19 +195,15 @@ public class TournamentService {
     }
     
     /**
-     * Lấy bảng xếp hạng của tất cả các bảng đấu với đầy đủ players, sắp xếp bằng Java
+     * Lấy bảng xếp hạng của tất cả các bảng đấu
      * Sử dụng cho knockout stage
      */
-    public Map<String, List<Team>> getAllGroupStandingsWithPlayersCalculatedInJava(int tournamentId) throws SQLException {
-        Map<String, List<Team>> groupStandings = new HashMap<>();
-        
-        // Lấy tất cả tên bảng
-        List<String> groupNames = getAllGroupNames(tournamentId);
-        
-        // Tính toán bảng xếp hạng cho từng bảng với đầy đủ players
-        for (String groupName : groupNames) {
-            List<Team> teams = teamService.getTeamsByGroupSortedWithPlayers(tournamentId, groupName);
-            groupStandings.put(groupName, teams);
+    public Map<Group, List<Team>> getAllGroupStandings(int tournamentId, List<Group> groups) throws SQLException {
+        Map<Group, List<Team>> groupStandings = new HashMap<>();
+
+        for (Group group : groups) {
+            List<Team> teams = teamService.getTeamsByGroupSortedWithPlayers(tournamentId, group);
+            groupStandings.put(group, teams);
         }
         
         return groupStandings;
@@ -450,6 +455,402 @@ public class TournamentService {
     }
 
     /**
+     * Cập nhật tournament stats trực tiếp vào database
+     * Method tiện ích để gọi từ bất kỳ đâu khi cần cập nhật stats
+     */
+    public void updateTournamentStatsToDatabase(int tournamentId) throws SQLException {
+        // Tính toán stats mới
+        TournamentStats stats = calculateTournamentStats(tournamentId);
+        
+        // Cập nhật vào database
+        updateOrInsertTournamentStats(tournamentId, stats);
+        
+        System.out.println("✅ Đã cập nhật tournament stats cho tournament ID: " + tournamentId);
+    }
+    
+    /**
+     * Cập nhật hoặc insert tournament stats vào database
+     */
+    private void updateOrInsertTournamentStats(int tournamentId, TournamentStats stats) throws SQLException {
+        // Kiểm tra xem đã có record chưa
+        String checkSql = "SELECT COUNT(*) FROM tournament_stats WHERE tournament_id = ?";
+        PreparedStatement checkStmt = dbManager.getConnection().prepareStatement(checkSql);
+        checkStmt.setInt(1, tournamentId);
+        ResultSet rs = checkStmt.executeQuery();
+        
+        boolean exists = rs.next() && rs.getInt(1) > 0;
+        rs.close();
+        checkStmt.close();
+        
+        if (exists) {
+            // Update existing record
+            String updateSql = """
+                UPDATE tournament_stats
+                SET total_goals = ?,
+                    total_matches = ?,
+                    total_yellow_cards = ?,
+                    total_red_cards = ?,
+                    total_substitutions = ?,
+                    top_scorer_id = ?,
+                    top_scorer_goals = ?
+                WHERE tournament_id = ?
+            """;
+            
+            PreparedStatement updateStmt = dbManager.getConnection().prepareStatement(updateSql);
+            updateStmt.setInt(1, stats.totalGoals);
+            updateStmt.setInt(2, stats.totalMatches);
+            updateStmt.setInt(3, stats.totalYellowCards);
+            updateStmt.setInt(4, stats.totalRedCards);
+            updateStmt.setInt(5, stats.totalSubstitutions);
+            if (stats.topScorerId > 0) {
+                updateStmt.setInt(6, stats.topScorerId);
+            } else {
+                updateStmt.setNull(6, java.sql.Types.INTEGER);
+            }
+            updateStmt.setInt(7, stats.topScorerGoals);
+            updateStmt.setInt(8, tournamentId);
+            updateStmt.executeUpdate();
+            updateStmt.close();
+            
+        } else {
+            // Insert new record
+            String insertSql = """
+                INSERT INTO tournament_stats
+                (tournament_id, total_goals, total_matches, total_yellow_cards,
+                 total_red_cards, total_substitutions, top_scorer_id, top_scorer_goals)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+            
+            PreparedStatement insertStmt = dbManager.getConnection().prepareStatement(insertSql);
+            insertStmt.setInt(1, tournamentId);
+            insertStmt.setInt(2, stats.totalGoals);
+            insertStmt.setInt(3, stats.totalMatches);
+            insertStmt.setInt(4, stats.totalYellowCards);
+            insertStmt.setInt(5, stats.totalRedCards);
+            insertStmt.setInt(6, stats.totalSubstitutions);
+            if (stats.topScorerId > 0) {
+                insertStmt.setInt(7, stats.topScorerId);
+            } else {
+                insertStmt.setNull(7, java.sql.Types.INTEGER);
+            }
+            insertStmt.setInt(8, stats.topScorerGoals);
+            insertStmt.executeUpdate();
+            insertStmt.close();
+        }
+    }
+
+    // ==================== METHODS MOVED FROM TournamentStatsCalculator ====================
+    
+    /**
+     * Tính toán lại tất cả tournament stats
+     * Moved from TournamentStatsCalculator
+     */
+    public void recalculateAllTournamentStats() {
+        try {
+            // Lấy tất cả tournaments
+            String selectTournamentsSql = "SELECT id, name FROM tournaments ORDER BY id";
+            PreparedStatement stmt = dbManager.getConnection().prepareStatement(selectTournamentsSql);
+            ResultSet rs = stmt.executeQuery();
+
+            int count = 0;
+            while (rs.next()) {
+                int tournamentId = rs.getInt("id");
+                String tournamentName = rs.getString("name");
+
+                recalculateTournamentStats(tournamentId, tournamentName);
+                count++;
+            }
+
+            rs.close();
+            stmt.close();
+
+            System.out.println("✅ Đã tính toán lại stats cho " + count + " tournaments!");
+
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi khi tính toán tournament stats: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Tính toán lại stats cho một tournament cụ thể
+     * Moved from TournamentStatsCalculator - sử dụng lại method calculateTournamentStats đã có
+     */
+    public void recalculateTournamentStats(int tournamentId, String tournamentName) throws SQLException {
+        // Sử dụng method calculateTournamentStats đã có trong TournamentService
+        TournamentStats stats = calculateTournamentStats(tournamentId);
+
+        // Sử dụng method updateOrInsertTournamentStats đã có
+        updateOrInsertTournamentStats(tournamentId, stats);
+    }
+
+    /**
+     * Hiển thị tất cả tournament stats
+     * Moved from TournamentStatsCalculator
+     */
+    public void displayAllTournamentStats() {
+        try {
+            System.out.println("📊 THỐNG KÊ TẤT CẢ TOURNAMENTS");
+            System.out.println("=".repeat(100));
+
+            String sql = """
+                SELECT t.id, t.name, t.year, t.host_country,
+                       ts.total_matches, ts.total_goals, ts.total_yellow_cards,
+                       ts.total_red_cards, ts.total_substitutions,
+                       ts.top_scorer_goals
+                FROM tournaments t
+                LEFT JOIN tournament_stats ts ON t.id = ts.tournament_id
+                ORDER BY t.year DESC, t.id DESC
+            """;
+
+            PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                System.out.printf("%-25s | %d | %-15s%n",
+                    rs.getString("name"),
+                    rs.getInt("year"),
+                    rs.getString("host_country"));
+
+                System.out.printf("   📊 Trận: %-3d | Bàn: %-3d | Vàng: %-3d | Đỏ: %-2d | Thay: %-3d | Vua phá lưới: (%d bàn)%n",
+                    rs.getInt("total_matches"),
+                    rs.getInt("total_goals"),
+                    rs.getInt("total_yellow_cards"),
+                    rs.getInt("total_red_cards"),
+                    rs.getInt("total_substitutions"),
+                    rs.getInt("top_scorer_goals"));
+                System.out.println();
+            }
+
+            rs.close();
+            stmt.close();
+
+        } catch (SQLException e) {
+            System.err.println("❌ Lỗi khi hiển thị tournament stats: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Tìm vua phá lưới của tournament
+     * Moved from TournamentStatsCalculator
+     */
+    public TopScorer findTopScorer(int tournamentId) throws SQLException {
+        String sql = """
+            SELECT p.id, p.name, COUNT(g.id) as goals_count
+            FROM players p
+            JOIN teams t ON p.team_id = t.id
+            LEFT JOIN goals g ON p.id = g.player_id
+            WHERE t.tournament_id = ?
+            GROUP BY p.id, p.name
+            HAVING goals_count > 0
+            ORDER BY goals_count DESC, p.name ASC
+            LIMIT 1
+        """;
+
+        PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql);
+        stmt.setInt(1, tournamentId);
+        ResultSet rs = stmt.executeQuery();
+
+        TopScorer topScorer = new TopScorer();
+        if (rs.next()) {
+            topScorer.playerId = rs.getInt("id");
+            topScorer.playerName = rs.getString("name");
+            topScorer.goals = rs.getInt("goals_count");
+        }
+
+        rs.close();
+        stmt.close();
+        return topScorer;
+    }
+
+    /**
+     * Tính tổng số trận đấu của tournament (alternative method from TournamentStatsCalculator)
+     * Sử dụng lại method calculateTotalMatches đã có
+     */
+    public int calculateTotalMatchesAlternative(int tournamentId) throws SQLException {
+        // Sử dụng lại method calculateTotalMatches đã có
+        return calculateTotalMatches(tournamentId);
+    }
+
+    /**
+     * Tính tổng số bàn thắng của tournament từ bảng teams (alternative method from TournamentStatsCalculator)
+     */
+    public int calculateTotalGoalsFromTeams(int tournamentId) throws SQLException {
+        String sql = """
+            SELECT COALESCE(SUM(goals_for), 0) as total_goals
+            FROM teams
+            WHERE tournament_id = ?
+        """;
+
+        PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql);
+        stmt.setInt(1, tournamentId);
+        ResultSet rs = stmt.executeQuery();
+
+        int total = 0;
+        if (rs.next()) {
+            total = rs.getInt("total_goals");
+        }
+
+        rs.close();
+        stmt.close();
+        return total;
+    }
+
+    /**
+     * Tính tổng số thẻ vàng của tournament (alternative method from TournamentStatsCalculator)
+     */
+    public int calculateTotalYellowCardsAlternative(int tournamentId) throws SQLException {
+        String sql = """
+            SELECT COUNT(*) as total_yellow_cards
+            FROM cards c
+            JOIN matches m ON c.match_id = m.id
+            JOIN teams t ON c.team_id = t.id
+            WHERE t.tournament_id = ? AND c.card_type = 'YELLOW'
+        """;
+
+        PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql);
+        stmt.setInt(1, tournamentId);
+        ResultSet rs = stmt.executeQuery();
+
+        int total = 0;
+        if (rs.next()) {
+            total = rs.getInt("total_yellow_cards");
+        }
+
+        rs.close();
+        stmt.close();
+        return total;
+    }
+
+    /**
+     * Tính tổng số thẻ đỏ của tournament (alternative method from TournamentStatsCalculator)
+     */
+    public int calculateTotalRedCardsAlternative(int tournamentId) throws SQLException {
+        String sql = """
+            SELECT COUNT(*) as total_red_cards
+            FROM cards c
+            JOIN matches m ON c.match_id = m.id
+            JOIN teams t ON c.team_id = t.id
+            WHERE t.tournament_id = ? AND c.card_type = 'RED'
+        """;
+
+        PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql);
+        stmt.setInt(1, tournamentId);
+        ResultSet rs = stmt.executeQuery();
+
+        int total = 0;
+        if (rs.next()) {
+            total = rs.getInt("total_red_cards");
+        }
+
+        rs.close();
+        stmt.close();
+        return total;
+    }
+
+    /**
+     * Tính tổng số thay người của tournament (alternative method from TournamentStatsCalculator)
+     * Sử dụng lại method calculateTotalSubstitutions đã có
+     */
+    public int calculateTotalSubstitutionsAlternative(int tournamentId) throws SQLException {
+        // Sử dụng lại method calculateTotalSubstitutions đã có
+        return calculateTotalSubstitutions(tournamentId);
+    }
+
+    /**
+     * Cập nhật hoặc tạo mới record trong tournament_stats (alternative method from TournamentStatsCalculator)
+     */
+    public void updateTournamentStatsAlternative(int tournamentId, int totalMatches, int totalGoals,
+                                     int totalYellowCards, int totalRedCards, int totalSubstitutions,
+                                     TopScorer topScorer) throws SQLException {
+
+        // Kiểm tra xem đã có record chưa
+        String checkSql = "SELECT id FROM tournament_stats WHERE tournament_id = ?";
+        PreparedStatement checkStmt = dbManager.getConnection().prepareStatement(checkSql);
+        checkStmt.setInt(1, tournamentId);
+        ResultSet rs = checkStmt.executeQuery();
+
+        boolean exists = rs.next();
+        rs.close();
+        checkStmt.close();
+
+        if (exists) {
+            // Update existing record
+            String updateSql = """
+                UPDATE tournament_stats
+                SET total_goals = ?,
+                    total_matches = ?,
+                    total_yellow_cards = ?,
+                    total_red_cards = ?,
+                    total_substitutions = ?,
+                    top_scorer_id = ?,
+                    top_scorer_goals = ?
+                WHERE tournament_id = ?
+            """;
+
+            PreparedStatement updateStmt = dbManager.getConnection().prepareStatement(updateSql);
+            updateStmt.setInt(1, totalGoals);
+            updateStmt.setInt(2, totalMatches);
+            updateStmt.setInt(3, totalYellowCards);
+            updateStmt.setInt(4, totalRedCards);
+            updateStmt.setInt(5, totalSubstitutions);
+            if (topScorer.playerId > 0) {
+                updateStmt.setInt(6, topScorer.playerId);
+            } else {
+                updateStmt.setNull(6, java.sql.Types.INTEGER);
+            }
+            updateStmt.setInt(7, topScorer.goals);
+            updateStmt.setInt(8, tournamentId);
+            updateStmt.executeUpdate();
+            updateStmt.close();
+
+        } else {
+            // Insert new record
+            String insertSql = """
+                INSERT INTO tournament_stats
+                (tournament_id, total_goals, total_matches, total_yellow_cards,
+                 total_red_cards, total_substitutions, top_scorer_id, top_scorer_goals)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+
+            PreparedStatement insertStmt = dbManager.getConnection().prepareStatement(insertSql);
+            insertStmt.setInt(1, tournamentId);
+            insertStmt.setInt(2, totalGoals);
+            insertStmt.setInt(3, totalMatches);
+            insertStmt.setInt(4, totalYellowCards);
+            insertStmt.setInt(5, totalRedCards);
+            insertStmt.setInt(6, totalSubstitutions);
+            if (topScorer.playerId > 0) {
+                insertStmt.setInt(7, topScorer.playerId);
+            } else {
+                insertStmt.setNull(7, java.sql.Types.INTEGER);
+            }
+            insertStmt.setInt(8, topScorer.goals);
+
+            insertStmt.executeUpdate();
+            insertStmt.close();
+        }
+    }
+
+    // ==================== INNER CLASSES ====================
+
+    /**
+     * Class để lưu thông tin vua phá lưới
+     * Moved from TournamentStatsCalculator
+     */
+    public static class TopScorer {
+        public int playerId = 0;
+        public String playerName = "";
+        public int goals = 0;
+        
+        @Override
+        public String toString() {
+            return String.format("TopScorer{playerId=%d, playerName='%s', goals=%d}", 
+                playerId, playerName, goals);
+        }
+    }
+
+    /**
      * Inner class để lưu tất cả thống kê tournament
      */
     public static class TournamentStats {
@@ -476,5 +877,32 @@ public class TournamentService {
                 totalMatches, totalGoals, totalYellowCards, totalRedCards, 
                 totalSubstitutions, topScorerName != null ? topScorerName : "N/A", topScorerGoals);
         }
+    }
+
+    // ==================== MAIN METHOD FOR TESTING ====================
+    
+    /**
+     * Main method để test các method đã chuyển từ TournamentStatsCalculator
+     */
+    public static void main(String[] args) {
+        TournamentService tournamentService = new TournamentService(new DatabaseManager());
+
+        System.out.println("🌟 TOURNAMENT SERVICE - STATS CALCULATOR");
+        System.out.println("=".repeat(60));
+
+        // Hiển thị stats trước khi tính toán
+        System.out.println("📋 TRƯỚC KHI TÍNH TOÁN:");
+        tournamentService.displayAllTournamentStats();
+
+        System.out.println("\n" + "=".repeat(60));
+
+        // Tính toán lại tất cả stats
+        tournamentService.recalculateAllTournamentStats();
+
+        System.out.println("=".repeat(60));
+
+        // Hiển thị stats sau khi tính toán
+        System.out.println("📋 SAU KHI TÍNH TOÁN:");
+        tournamentService.displayAllTournamentStats();
     }
 }

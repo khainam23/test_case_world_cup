@@ -26,17 +26,55 @@ public class KnockoutStageManager {
         this.bronzeWinners = new ArrayList<>();
     }
 
+    // Helper method để tìm Group theo tên
+    private Group findGroupByName(Map<Group, Team> groupMap, String groupName) {
+        for (Group group : groupMap.keySet()) {
+            if (group.getName().contains(groupName)) {
+                return group;
+            }
+        }
+        return null;
+    }
+
     // Tạo bracket cho vòng 1/16 dựa vào kết quả bảng đấu
-    public void generateRoundOf16Bracket(Map<String, String> groupWinners, Map<String, String> groupRunnersUp) {
+    public void generateRoundOf16Bracket(Map<Group, Team> groupWinners, Map<Group, Team> groupRunnersUp) {
         bracketInfo.clear();
-        bracketInfo.put("Match 1", groupWinners.get("A") + " vs " + groupRunnersUp.get("B"));
-        bracketInfo.put("Match 2", groupWinners.get("B") + " vs " + groupRunnersUp.get("A"));
-        bracketInfo.put("Match 3", groupWinners.get("C") + " vs " + groupRunnersUp.get("D"));
-        bracketInfo.put("Match 4", groupWinners.get("D") + " vs " + groupRunnersUp.get("C"));
-        bracketInfo.put("Match 5", groupWinners.get("E") + " vs " + groupRunnersUp.get("F"));
-        bracketInfo.put("Match 6", groupWinners.get("F") + " vs " + groupRunnersUp.get("E"));
-        bracketInfo.put("Match 7", groupWinners.get("G") + " vs " + groupRunnersUp.get("H"));
-        bracketInfo.put("Match 8", groupWinners.get("H") + " vs " + groupRunnersUp.get("G"));
+        
+        Group groupA = findGroupByName(groupWinners, "A");
+        Group groupB = findGroupByName(groupWinners, "B");
+        Group groupC = findGroupByName(groupWinners, "C");
+        Group groupD = findGroupByName(groupWinners, "D");
+        Group groupE = findGroupByName(groupWinners, "E");
+        Group groupF = findGroupByName(groupWinners, "F");
+        Group groupG = findGroupByName(groupWinners, "G");
+        Group groupH = findGroupByName(groupWinners, "H");
+        
+        Team winnerA = groupWinners.get(groupA);
+        Team winnerB = groupWinners.get(groupB);
+        Team winnerC = groupWinners.get(groupC);
+        Team winnerD = groupWinners.get(groupD);
+        Team winnerE = groupWinners.get(groupE);
+        Team winnerF = groupWinners.get(groupF);
+        Team winnerG = groupWinners.get(groupG);
+        Team winnerH = groupWinners.get(groupH);
+        
+        Team runnerB = groupRunnersUp.get(groupB);
+        Team runnerA = groupRunnersUp.get(groupA);
+        Team runnerD = groupRunnersUp.get(groupD);
+        Team runnerC = groupRunnersUp.get(groupC);
+        Team runnerF = groupRunnersUp.get(groupF);
+        Team runnerE = groupRunnersUp.get(groupE);
+        Team runnerH = groupRunnersUp.get(groupH);
+        Team runnerG = groupRunnersUp.get(groupG);
+        
+        bracketInfo.put("Match 1", winnerA + " vs " + runnerB);
+        bracketInfo.put("Match 2", winnerB + " vs " + runnerA);
+        bracketInfo.put("Match 3", winnerC + " vs " + runnerD);
+        bracketInfo.put("Match 4", winnerD + " vs " + runnerC);
+        bracketInfo.put("Match 5", winnerE + " vs " + runnerF);
+        bracketInfo.put("Match 6", winnerF + " vs " + runnerE);
+        bracketInfo.put("Match 7", winnerG + " vs " + runnerH);
+        bracketInfo.put("Match 8", winnerH + " vs " + runnerG);
     }
 
     // Cập nhật danh sách đội thắng vòng 1/16

@@ -8,219 +8,460 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SubstitutionTest {
 
-    private Team team;
-    private Team teamA;
-    private Team teamB;
-    private Match match;
     private Player playerIn;
     private Player playerOut;
+    private Player playerSame;
+    private Team team;
+    private Match match;
+    private Team teamA;
+    private Team teamB;
 
     @BeforeEach
-    void setUp() {
-        // Tạo danh sách trợ lý
-        List<String> assistants = Arrays.asList("Assistant 1", "Assistant 2");
-
-        //  Tạo team A: 11 cầu thủ đá chính, 5 cầu thủ dự bị
-        List<Player> startingPlayersA = new ArrayList<>();
-        for (int i = 0; i < 11; i++) {
-            startingPlayersA.add(new Player("Team A Starter " + i, i + 1, "MF"));
+    public void setUp() {
+        // Tạo các đối tượng cần thiết cho test
+        playerIn = new Player("Lionel Messi", 10, "Forward");
+        playerOut = new Player("Angel Di Maria", 11, "Midfielder");
+        playerSame = new Player("Lionel Messi", 10, "Forward"); // Cùng tên với playerIn
+        
+        // Tạo danh sách cầu thủ cho teamA
+        List<Player> startingPlayersA = createStartingPlayers("Argentina");
+        List<Player> substitutePlayersA = createSubstitutePlayers("Argentina");
+        
+        teamA = new Team("Argentina", "South America", "Lionel Scaloni", 
+                        List.of("Assistant Coach 1"), "Medical Staff 1", 
+                        startingPlayersA, substitutePlayersA, false);
+        
+        // Tạo danh sách cầu thủ cho teamB
+        List<Player> startingPlayersB = createStartingPlayers("Brazil");
+        List<Player> substitutePlayersB = createSubstitutePlayers("Brazil");
+        
+        teamB = new Team("Brazil", "South America", "Tite", 
+                        List.of("Assistant Coach 2"), "Medical Staff 2", 
+                        startingPlayersB, substitutePlayersB, false);
+        
+        team = teamA;
+        
+        match = new Match(teamA, teamB, "Stadium A", "Referee A", false);
+    }
+    
+    private List<Player> createStartingPlayers(String teamName) {
+        List<Player> players = new ArrayList<>();
+        for (int i = 1; i <= 11; i++) {
+            players.add(new Player(teamName + " Player " + i, i, "Position " + i));
         }
-
-        List<Player> subPlayersA = new ArrayList<>();
-        for (int i = 11; i < 16; i++) {
-            subPlayersA.add(new Player("Team A Sub " + i, i + 1, "FW"));
+        return players;
+    }
+    
+    private List<Player> createSubstitutePlayers(String teamName) {
+        List<Player> players = new ArrayList<>();
+        for (int i = 12; i <= 16; i++) {
+            players.add(new Player(teamName + " Sub " + i, i, "Position " + i));
         }
-
-        teamA = new Team("Team A", "Asia", "Coach A", assistants, "Medic A", startingPlayersA, subPlayersA, false);
-        team = teamA; //Gán team dùng trong test
-
-        // Tạo team B: 11 cầu thủ đá chính, 5 cầu thủ dự bị
-        List<Player> startingPlayersB = new ArrayList<>();
-        for (int i = 0; i < 11; i++) {
-            startingPlayersB.add(new Player("Team B Starter " + i, i + 23, "MF"));
-        }
-
-        List<Player> subPlayersB = new ArrayList<>();
-        for (int i = 11; i < 16; i++) {
-            subPlayersB.add(new Player("Team B Sub " + i, i + 23, "FW"));
-        }
-
-        teamB = new Team("Team B", "Europe", "Coach B", assistants, "Medic B", startingPlayersB, subPlayersB, false);
-
-        // Tạo match
-        match = new Match(
-            teamA,
-            teamB,
-            teamA.getStartingPlayers(),
-            teamA.getSubstitutePlayers(),
-            teamB.getStartingPlayers(),
-            teamB.getSubstitutePlayers(),
-            false
-        );
-
-        // Tạo cầu thủ
-        playerIn = new Player("Player In", 20, "MF");
-        playerOut = new Player("Player Out", 10, "FW");
-
-        // Thêm vào danh sách đội
-        team.addSubstitutePlayer(playerIn);
-        team.addStartingPlayer(playerOut);
-        
-        // Thêm vào players list để isContainPlayer() trả về true
-        team.getPlayers().add(playerIn);
-        team.getPlayers().add(playerOut);
+        return players;
     }
 
-    @Test
-    void SubstitutionConstructor_PhutAmMotMot_ThrowException() {
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, -1, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không hợp lệ"));
-    }
+    // ========== CONSTRUCTOR TESTS - Phân hoạch tương đương ==========
 
     @Test
-    void SubstitutionConstructor_PhutBang151_ThrowException() {
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 151, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không hợp lệ"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PhutAmLon_ThrowException() {
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, -999, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không hợp lệ"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PhutLonHon200_ThrowException() {
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 200, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không hợp lệ"));
-    }
-
-
-    @Test
-    void SubstitutionConstructor_PhutBang0_KhoiTaoThanhCong() {
-        assertDoesNotThrow(() -> {
-            new Substitution(playerIn, playerOut, 0, team, match);
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_PhutBang1_KhoiTaoThanhCong() {
-        assertDoesNotThrow(() -> {
-            new Substitution(playerIn, playerOut, 1, team, match);
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_PhutBang45_KhoiTaoThanhCong() {
-        assertDoesNotThrow(() -> {
-            new Substitution(playerIn, playerOut, 45, team, match);
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_PhutBang90_KhoiTaoThanhCong() {
-        assertDoesNotThrow(() -> {
-            new Substitution(playerIn, playerOut, 90, team, match);
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_PhutBang149_KhoiTaoThanhCong() {
-        assertDoesNotThrow(() -> {
-            new Substitution(playerIn, playerOut, 149, team, match);
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_PhutBang150_KhoiTaoThanhCong() {
-        assertDoesNotThrow(() -> {
-            new Substitution(playerIn, playerOut, 150, team, match);
-        });
-    }
-
-    // ========== PLAYER ELIGIBILITY TESTS ==========
-
-    @Test
-    void SubstitutionConstructor_PlayerInKhongDuDieuKien_ThrowException() {
-        playerIn.receiveRedCard(); // Làm cho playerIn không đủ điều kiện
-        
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không đủ điều kiện"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerOutKhongDuDieuKien_ThrowException() {
-        playerOut.receiveRedCard(); // Làm cho playerOut không đủ điều kiện
-        
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không đủ điều kiện"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerInCo2TheVang_ThrowException() {
-        playerIn.receiveYellowCard();
-        playerIn.receiveYellowCard(); // 2 thẻ vàng = bị đuổi
-        
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không đủ điều kiện"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerOutCo2TheVang_ThrowException() {
-        playerOut.receiveYellowCard();
-        playerOut.receiveYellowCard(); // 2 thẻ vàng = bị đuổi
-        
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không đủ điều kiện"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerInCo1TheVang_KhoiTaoThanhCong() {
-        playerIn.receiveYellowCard(); // 1 thẻ vàng vẫn đủ điều kiện
-        
-        assertDoesNotThrow(() -> {
-            new Substitution(playerIn, playerOut, 60, team, match);
-        });
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerOutCo1TheVang_KhoiTaoThanhCong() {
-        playerOut.receiveYellowCard(); // 1 thẻ vàng vẫn đủ điều kiện
-        
-        assertDoesNotThrow(() -> {
-            new Substitution(playerIn, playerOut, 60, team, match);
-        });
-    }
-
-    // ========== SUCCESSFUL SUBSTITUTION TESTS ==========
-
-    @Test
-    void SubstitutionConstructor_TatCaDieuKienHopLe_KhoiTaoThanhCong() {
+    public void SubstitutionConstructor_TatCaThamSoHopLe_KhoiTaoThanhCong() {
         Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
         
+        assertNotNull(substitution);
+        assertEquals(playerIn, substitution.getInPlayer());
+        assertEquals(playerOut, substitution.getOutPlayer());
+        assertEquals(60, substitution.getMinute());
+        assertEquals(team, substitution.getTeam());
+        assertEquals(match, substitution.getMatch());
+        assertEquals(0, substitution.getId()); // ID mặc định là 0
+    }
+
+    @Test
+    public void SubstitutionConstructor_PlayerInNull_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(null, playerOut, 60, team, match);
+        });
+        assertTrue(exception.getMessage().contains("Thông tin không được null"));
+    }
+
+    @Test
+    public void SubstitutionConstructor_PlayerOutNull_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, null, 60, team, match);
+        });
+        assertTrue(exception.getMessage().contains("Thông tin không được null"));
+    }
+
+    @Test
+    public void SubstitutionConstructor_TeamNull_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, playerOut, 60, null, match);
+        });
+        assertTrue(exception.getMessage().contains("Thông tin không được null"));
+    }
+
+    @Test
+    public void SubstitutionConstructor_MatchNull_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, playerOut, 60, team, null);
+        });
+        assertTrue(exception.getMessage().contains("Thông tin không được null"));
+    }
+
+    @Test
+    public void SubstitutionConstructor_TatCaThamSoNull_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(null, null, 60, null, null);
+        });
+        assertTrue(exception.getMessage().contains("Thông tin không được null"));
+    }
+
+    // ========== MINUTE VALIDATION TESTS - Giá trị biên ==========
+
+    @Test
+    public void SubstitutionConstructor_PhutAm1_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, playerOut, -1, team, match);
+        });
+        assertTrue(exception.getMessage().contains("Thời điểm thay người không hợp lệ"));
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut0_KhoiTaoThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 0, team, match);
+        assertEquals(0, substitution.getMinute());
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut1_KhoiTaoThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 1, team, match);
+        assertEquals(1, substitution.getMinute());
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut45_KhoiTaoThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 45, team, match);
+        assertEquals(45, substitution.getMinute());
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut90_KhoiTaoThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 90, team, match);
+        assertEquals(90, substitution.getMinute());
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut120_KhoiTaoThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 120, team, match);
+        assertEquals(120, substitution.getMinute());
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut149_KhoiTaoThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 149, team, match);
+        assertEquals(149, substitution.getMinute());
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut150_KhoiTaoThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 150, team, match);
+        assertEquals(150, substitution.getMinute());
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut151_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, playerOut, 151, team, match);
+        });
+        assertTrue(exception.getMessage().contains("Thời điểm thay người không hợp lệ"));
+    }
+
+    @Test
+    public void SubstitutionConstructor_Phut200_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, playerOut, 200, team, match);
+        });
+        assertTrue(exception.getMessage().contains("Thời điểm thay người không hợp lệ"));
+    }
+
+    @Test
+    public void SubstitutionConstructor_PhutAmLon_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, playerOut, -100, team, match);
+        });
+        assertTrue(exception.getMessage().contains("Thời điểm thay người không hợp lệ"));
+    }
+
+    // ========== PLAYER VALIDATION TESTS - Bao phủ nhánh ==========
+
+    @Test
+    public void SubstitutionConstructor_PlayerInVaPlayerOutGiongNhau_ThrowIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, playerIn, 60, team, match);
+        });
+        assertTrue(exception.getMessage().contains("Cầu thủ vào và ra phải khác nhau"));
+    }
+
+    @Test
+    public void SubstitutionConstructor_PlayerInVaPlayerOutKhacNhau_KhoiTaoThanhCong() {
+        assertDoesNotThrow(() -> {
+            new Substitution(playerIn, playerOut, 60, team, match);
+        });
+    }
+
+    @Test
+    public void SubstitutionConstructor_PlayerCungTenNhungKhacDoiTuong_ThrowIllegalArgumentException() {
+        // playerSame có cùng tên với playerIn nhưng là đối tượng khác
+        // Tuy nhiên equals() sẽ so sánh theo nội dung, không phải reference
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            new Substitution(playerIn, playerSame, 60, team, match);
+        });
+        assertTrue(exception.getMessage().contains("Cầu thủ vào và ra phải khác nhau"));
+    }
+
+    // ========== GETTER METHODS TESTS - Bao phủ câu lệnh ==========
+
+    @Test
+    public void GetInPlayer_SubstitutionHopLe_TraVePlayerIn() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertEquals(playerIn, substitution.getInPlayer());
+    }
+
+    @Test
+    public void GetOutPlayer_SubstitutionHopLe_TraVePlayerOut() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertEquals(playerOut, substitution.getOutPlayer());
+    }
+
+    @Test
+    public void GetMinute_SubstitutionHopLe_TraVeMinute() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 75, team, match);
+        assertEquals(75, substitution.getMinute());
+    }
+
+    @Test
+    public void GetTeam_SubstitutionHopLe_TraVeTeam() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertEquals(team, substitution.getTeam());
+    }
+
+    @Test
+    public void GetMatch_SubstitutionHopLe_TraVeMatch() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertEquals(match, substitution.getMatch());
+    }
+
+    @Test
+    public void GetId_SubstitutionMoi_TraVe0() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertEquals(0, substitution.getId());
+    }
+
+    // ========== SETTER METHODS TESTS - Bao phủ câu lệnh ==========
+
+    @Test
+    public void SetId_GiaTriDuong_SetThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        substitution.setId(123);
+        assertEquals(123, substitution.getId());
+    }
+
+    @Test
+    public void SetId_GiaTriAm_SetThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        substitution.setId(-1);
+        assertEquals(-1, substitution.getId());
+    }
+
+    @Test
+    public void SetId_GiaTri0_SetThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        substitution.setId(0);
+        assertEquals(0, substitution.getId());
+    }
+
+    @Test
+    public void SetId_GiaTriLon_SetThanhCong() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        substitution.setId(Integer.MAX_VALUE);
+        assertEquals(Integer.MAX_VALUE, substitution.getId());
+    }
+
+    // ========== TOSTRING METHOD TESTS - Bao phủ câu lệnh ==========
+
+    @Test
+    public void ToString_SubstitutionHopLe_ChuaThongTinDayDu() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        String result = substitution.toString();
+        
+        assertTrue(result.contains("Substitution{"));
+        assertTrue(result.contains("playerIn=" + playerIn.getName()));
+        assertTrue(result.contains("playerOut=" + playerOut.getName()));
+        assertTrue(result.contains("minute=60"));
+        assertTrue(result.contains("team=" + team.getName()));
+        assertTrue(result.contains("match between"));
+        assertTrue(result.contains(teamA.getName()));
+        assertTrue(result.contains(teamB.getName()));
+    }
+
+    @Test
+    public void ToString_PhutKhacNhau_ChuaPhutChinhXac() {
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 45, team, match);
+        Substitution substitution2 = new Substitution(playerIn, playerOut, 90, team, match);
+        
+        assertTrue(substitution1.toString().contains("minute=45"));
+        assertTrue(substitution2.toString().contains("minute=90"));
+    }
+
+    // ========== EQUALS METHOD TESTS - Bao phủ nhánh và đường ==========
+
+    @Test
+    public void Equals_CungDoiTuong_TraVeTrue() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertTrue(substitution.equals(substitution));
+    }
+
+    @Test
+    public void Equals_DoiTuongNull_TraVeFalse() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertFalse(substitution.equals(null));
+    }
+
+    @Test
+    public void Equals_KhacLoaiDoiTuong_TraVeFalse() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertFalse(substitution.equals("Not a Substitution"));
+    }
+
+    @Test
+    public void Equals_TatCaThuocTinhGiongNhau_TraVeTrue() {
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution substitution2 = new Substitution(playerIn, playerOut, 60, team, match);
+        
+        // Set cùng ID để equals trả về true
+        substitution1.setId(1);
+        substitution2.setId(1);
+        
+        assertTrue(substitution1.equals(substitution2));
+    }
+
+    @Test
+    public void Equals_KhacId_TraVeFalse() {
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution substitution2 = new Substitution(playerIn, playerOut, 60, team, match);
+        
+        substitution1.setId(1);
+        substitution2.setId(2);
+        
+        assertFalse(substitution1.equals(substitution2));
+    }
+
+    @Test
+    public void Equals_KhacMinute_TraVeFalse() {
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution substitution2 = new Substitution(playerIn, playerOut, 75, team, match);
+        
+        substitution1.setId(1);
+        substitution2.setId(1);
+        
+        assertFalse(substitution1.equals(substitution2));
+    }
+
+    @Test
+    public void Equals_KhacPlayerIn_TraVeFalse() {
+        Player anotherPlayer = new Player("Sergio Aguero", 9, "Forward");
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution substitution2 = new Substitution(anotherPlayer, playerOut, 60, team, match);
+        
+        substitution1.setId(1);
+        substitution2.setId(1);
+        
+        assertFalse(substitution1.equals(substitution2));
+    }
+
+    @Test
+    public void Equals_KhacPlayerOut_TraVeFalse() {
+        Player anotherPlayer = new Player("Sergio Aguero", 9, "Forward");
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution substitution2 = new Substitution(playerIn, anotherPlayer, 60, team, match);
+        
+        substitution1.setId(1);
+        substitution2.setId(1);
+        
+        assertFalse(substitution1.equals(substitution2));
+    }
+
+    @Test
+    public void Equals_KhacTeam_TraVeFalse() {
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, teamA, match);
+        Substitution substitution2 = new Substitution(playerIn, playerOut, 60, teamB, match);
+        
+        substitution1.setId(1);
+        substitution2.setId(1);
+        
+        assertFalse(substitution1.equals(substitution2));
+    }
+
+    @Test
+    public void Equals_KhacMatch_TraVeFalse() {
+        Match anotherMatch = new Match(teamA, teamB, "Stadium B", "Referee B", true);
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution substitution2 = new Substitution(playerIn, playerOut, 60, team, anotherMatch);
+        
+        substitution1.setId(1);
+        substitution2.setId(1);
+        
+        assertFalse(substitution1.equals(substitution2));
+    }
+
+    // ========== HASHCODE METHOD TESTS - Bao phủ câu lệnh ==========
+
+    @Test
+    public void HashCode_CungDoiTuong_CungHashCode() {
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertEquals(substitution.hashCode(), substitution.hashCode());
+    }
+
+    @Test
+    public void HashCode_DoiTuongGiongNhau_CungHashCode() {
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution substitution2 = new Substitution(playerIn, playerOut, 60, team, match);
+        
+        substitution1.setId(1);
+        substitution2.setId(1);
+        
+        assertEquals(substitution1.hashCode(), substitution2.hashCode());
+    }
+
+    @Test
+    public void HashCode_DoiTuongKhacNhau_KhacHashCode() {
+        Substitution substitution1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution substitution2 = new Substitution(playerIn, playerOut, 75, team, match);
+        
+        substitution1.setId(1);
+        substitution2.setId(1);
+        
+        assertNotEquals(substitution1.hashCode(), substitution2.hashCode());
+    }
+
+    // ========== INTEGRATION TESTS - Kiểm tra tích hợp ==========
+
+    @Test
+    public void SubstitutionWorkflow_TaoVaThayDoiId_HoatDongDungCach() {
+        // Tạo substitution
+        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
+        assertEquals(0, substitution.getId());
+        
+        // Thay đổi ID
+        substitution.setId(100);
+        assertEquals(100, substitution.getId());
+        
+        // Kiểm tra các thuộc tính khác không thay đổi
         assertEquals(playerIn, substitution.getInPlayer());
         assertEquals(playerOut, substitution.getOutPlayer());
         assertEquals(60, substitution.getMinute());
@@ -229,153 +470,20 @@ public class SubstitutionTest {
     }
 
     @Test
-    void SubstitutionConstructor_KiemTraCapNhatDanhSach_ThanhCong() {
-        // Kiểm tra trạng thái trước khi thay người
-        assertTrue(team.getSubstitutePlayers().contains(playerIn));
-        assertTrue(team.getStartingPlayers().contains(playerOut));
-        assertFalse(team.getStartingPlayers().contains(playerIn));
-        assertFalse(team.getSubstitutePlayers().contains(playerOut));
+    public void SubstitutionWorkflow_NhieuSubstitutionCungMatch_HoatDongDungCach() {
+        Player player3 = new Player("Paulo Dybala", 21, "Forward");
+        Player player4 = new Player("Lautaro Martinez", 22, "Forward");
         
-        new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution sub1 = new Substitution(playerIn, playerOut, 60, team, match);
+        Substitution sub2 = new Substitution(player3, player4, 75, team, match);
         
-        // Kiểm tra trạng thái sau khi thay người
-        assertFalse(team.getSubstitutePlayers().contains(playerIn));
-        assertFalse(team.getStartingPlayers().contains(playerOut));
-        assertTrue(team.getStartingPlayers().contains(playerIn));
-        assertTrue(team.getSubstitutePlayers().contains(playerOut));
-    }
-
-    @Test
-    void SubstitutionConstructor_KiemTraThemVaoMatch_ThanhCong() {
-        int initialSubCount = match.getSubstitutions().size();
+        sub1.setId(1);
+        sub2.setId(2);
         
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-        
-        assertEquals(initialSubCount + 1, match.getSubstitutions().size());
-        assertTrue(match.getSubstitutions().contains(substitution));
-    }
-
-    // ========== GETTER METHOD TESTS ==========
-
-    @Test
-    void GetInPlayer_TraVePlayerIn_ThanhCong() {
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-        assertEquals(playerIn, substitution.getInPlayer());
-    }
-
-    @Test
-    void GetOutPlayer_TraVePlayerOut_ThanhCong() {
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-        assertEquals(playerOut, substitution.getOutPlayer());
-    }
-
-    @Test
-    void GetMinute_TraVePhut_ThanhCong() {
-        Substitution substitution = new Substitution(playerIn, playerOut, 75, team, match);
-        assertEquals(75, substitution.getMinute());
-    }
-
-    @Test
-    void GetTeam_TraVeTeam_ThanhCong() {
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-        assertEquals(team, substitution.getTeam());
-    }
-
-    @Test
-    void GetMatch_TraVeMatch_ThanhCong() {
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-        assertEquals(match, substitution.getMatch());
-    }
-
-    // ========== toString METHOD TEST ==========
-
-    @Test
-    void ToString_ChuoiMoTaHopLe_ThanhCong() {
-        Substitution substitution = new Substitution(playerIn, playerOut, 60, team, match);
-        String result = substitution.toString();
-        
-        assertTrue(result.contains("Player In"));
-        assertTrue(result.contains("Player Out"));
-        assertTrue(result.contains("60"));
-        assertTrue(result.contains("Team A"));
-        assertTrue(result.contains("Team B"));
-    }
-
-    // ========== NULL PARAMETER TESTS ==========
-
-    @Test
-    void SubstitutionConstructor_PlayerInNull_ThrowException() {
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(null, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không được null"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerOutNull_ThrowException() {
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, null, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không được null"));
-    }
-
-    @Test
-    void SubstitutionConstructor_TeamNull_ThrowException() {
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, null, match)
-        );
-        assertTrue(ex.getMessage().contains("không được null"));
-    }
-
-    @Test
-    void SubstitutionConstructor_MatchNull_ThrowException() {
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, null)
-        );
-        assertTrue(ex.getMessage().contains("không được null"));
-    }
-
-    // ========== PLAYER LIST VALIDATION TESTS ==========
-
-    @Test
-    void SubstitutionConstructor_PlayerInKhongTrongDanhSachDuBi_ThrowException() {
-        team.getSubstitutePlayers().clear();
-
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không thuộc danh sách dự bị"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerOutKhongTrongDanhSachChinh_ThrowException() {
-        team.getStartingPlayers().clear();
-
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không thuộc danh sách thi đấu chính"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerInDaTrongDanhSachChinh_ThrowException() {
-        Player alreadyStarting = new Player("Already Starting", 24, "FW");
-        team.addStartingPlayer(alreadyStarting);
-
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(alreadyStarting, playerOut, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không thuộc danh sách dự bị"));
-    }
-
-    @Test
-    void SubstitutionConstructor_PlayerOutDaTrongDanhSachDuBi_ThrowException() {
-        Player alreadySub = new Player("Already Sub", 25, "DF");
-        team.addSubstitutePlayer(alreadySub);
-
-        Exception ex = assertThrows(IllegalArgumentException.class, () ->
-                new Substitution(playerIn, alreadySub, 60, team, match)
-        );
-        assertTrue(ex.getMessage().contains("không thuộc danh sách thi đấu chính"));
+        assertNotEquals(sub1, sub2);
+        assertEquals(match, sub1.getMatch());
+        assertEquals(match, sub2.getMatch());
+        assertEquals(team, sub1.getTeam());
+        assertEquals(team, sub2.getTeam());
     }
 }

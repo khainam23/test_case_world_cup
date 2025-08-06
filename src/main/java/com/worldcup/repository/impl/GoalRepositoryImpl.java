@@ -31,20 +31,17 @@ public class GoalRepositoryImpl implements GoalRepository {
         String sql = """
             INSERT INTO goals (match_id, player_id, team_id, minute, goal_type)
             VALUES (?, 
-                    (SELECT p.id FROM players p JOIN teams t ON p.team_id = t.id 
-                     WHERE p.name = ? AND t.name = ? AND t.tournament_id = ?), 
-                    (SELECT id FROM teams WHERE name = ? AND tournament_id = ?), 
-                    ?, 'REGULAR')
+                    ?, 
+                    ?, 
+                    ?, 
+                    'REGULAR')
         """;
         
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setInt(1, goal.getMatch().getId());
-        pstmt.setString(2, goal.getPlayer().getName());
-        pstmt.setString(3, goal.getTeam().getName());
-        pstmt.setInt(4, goal.getTeam().getTournamentId());
-        pstmt.setString(5, goal.getTeam().getName());
-        pstmt.setInt(6, goal.getTeam().getTournamentId());
-        pstmt.setInt(7, goal.getMinute());
+        pstmt.setInt(2, goal.getPlayer().getId());
+        pstmt.setInt(3, goal.getTeam().getId());
+        pstmt.setInt(4, goal.getMinute());
         pstmt.executeUpdate();
         pstmt.close();
         

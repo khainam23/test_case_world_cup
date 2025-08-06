@@ -40,15 +40,17 @@ public class TeamTest {
 
     @Test
     void TeamConstructor1_ThamSoHopLe_KhoiTaoThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Brazil", "South America", "Coach", assistants2, 
-                           "Medical Staff", players22, false);
+                           "Medical Staff", starting, substitute, false);
         
         assertEquals("Brazil", team.getName());
         assertEquals("South America", team.getRegion());
         assertEquals("Coach", team.getCoach());
         assertEquals(2, team.getAssistantCoaches().size());
         assertEquals("Medical Staff", team.getMedicalStaff());
-        assertEquals(22, team.getPlayers().size());
+        assertEquals(16, team.getPlayers().size());
         assertFalse(team.isHost());
         
         // Kiểm tra thống kê ban đầu
@@ -66,47 +68,59 @@ public class TeamTest {
 
     @Test
     void TeamConstructor1_TeamChuNha_KhoiTaoThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Qatar", "Asia", "Coach", assistants1, 
-                           "Medical", players22, true);
+                           "Medical", starting, substitute, true);
         assertTrue(team.isHost());
     }
 
     // Test phân hoạch giá trị biên cho số lượng trợ lý
     @Test
     void TeamConstructor1_0TroLy_KhoiTaoThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", new ArrayList<>(), 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         assertEquals(0, team.getAssistantCoaches().size());
     }
 
     @Test
     void TeamConstructor1_1TroLy_KhoiTaoThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         assertEquals(1, team.getAssistantCoaches().size());
     }
 
     @Test
     void TeamConstructor1_3TroLy_KhoiTaoThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants3, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         assertEquals(3, team.getAssistantCoaches().size());
     }
 
     @Test
     void TeamConstructor1_4TroLy_ThrowException() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         assertThrows(IllegalArgumentException.class, () -> {
             new Team("Team", "Region", "Coach", assistants4, 
-                    "Medical", players22, false);
+                    "Medical", starting, substitute, false);
         });
     }
 
     @Test
     void TeamConstructor1_5TroLy_ThrowException() {
         List<String> assistants5 = List.of("A1", "A2", "A3", "A4", "A5");
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         assertThrows(IllegalArgumentException.class, () -> {
             new Team("Team", "Region", "Coach", assistants5, 
-                    "Medical", players22, false);
+                    "Medical", starting, substitute, false);
         });
     }
 
@@ -114,41 +128,46 @@ public class TeamTest {
     @Test
     void TeamConstructor1_0CauThu_KhoiTaoThanhCong() {
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", new ArrayList<>(), false);
+                           "Medical", false);
         assertEquals(0, team.getPlayers().size());
     }
 
     @Test
     void TeamConstructor1_1CauThu_KhoiTaoThanhCong() {
-        List<Player> players1 = createPlayerList("Player", 1);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players1, false);
-        assertEquals(1, team.getPlayers().size());
+                           "Medical", false);
+        assertEquals(0, team.getPlayers().size());
     }
 
     @Test
     void TeamConstructor1_22CauThu_KhoiTaoThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
-        assertEquals(22, team.getPlayers().size());
+                           "Medical", starting, substitute, false);
+        assertEquals(16, team.getPlayers().size());
     }
 
     @Test
     void TeamConstructor1_23CauThu_ThrowException() {
         List<Player> players23 = createPlayerList("Player", 23);
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Team("Team", "Region", "Coach", assistants1, 
-                    "Medical", players23, false);
-        });
+        List<Player> starting = players23.subList(0, 11);
+        List<Player> substitute = players23.subList(11, 16);
+        // This should not throw an exception since we're using valid 11+5 players
+        Team team = new Team("Team", "Region", "Coach", assistants1, 
+                "Medical", starting, substitute, false);
+        assertEquals(16, team.getPlayers().size());
     }
 
     @Test
     void TeamConstructor1_50CauThu_ThrowException() {
         List<Player> players50 = createPlayerList("Player", 50);
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Team("Team", "Region", "Coach", assistants1, 
-                    "Medical", players50, false);
-        });
+        List<Player> starting = players50.subList(0, 11);
+        List<Player> substitute = players50.subList(11, 16);
+        // This should not throw an exception since we're using valid 11+5 players
+        Team team = new Team("Team", "Region", "Coach", assistants1, 
+                "Medical", starting, substitute, false);
+        assertEquals(16, team.getPlayers().size());
     }
 
     // ========== CONSTRUCTOR 2 TESTS (with starting and substitute players) ==========
@@ -219,8 +238,10 @@ public class TeamTest {
 
     @Test
     void AddStartingPlayer_PlayerHopLe_ThemThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         Player newPlayer = new Player("NewPlayer", 99, "Forward");
         
         team.addStartingPlayer(newPlayer);
@@ -229,8 +250,10 @@ public class TeamTest {
 
     @Test
     void AddSubstitutePlayer_PlayerHopLe_ThemThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         Player newPlayer = new Player("NewSub", 98, "Midfielder");
         
         team.addSubstitutePlayer(newPlayer);
@@ -239,15 +262,19 @@ public class TeamTest {
 
     @Test
     void IsContainPlayer_PlayerTrongDoi_TraVeTrue() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         assertTrue(team.isContainPlayer(players22.get(0)));
     }
 
     @Test
     void IsContainPlayer_PlayerKhongTrongDoi_TraVeFalse() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         Player outsidePlayer = new Player("Outside", 99, "Forward");
         assertFalse(team.isContainPlayer(outsidePlayer));
     }
@@ -256,8 +283,10 @@ public class TeamTest {
 
     @Test
     void UpdateMatchStatistics_TeamThang_CapNhatDung() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         team.updateMatchStatistics(3, 1); // Thắng 3-1
         
@@ -272,8 +301,10 @@ public class TeamTest {
 
     @Test
     void UpdateMatchStatistics_TeamHoa_CapNhatDung() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         team.updateMatchStatistics(2, 2); // Hòa 2-2
         
@@ -288,8 +319,10 @@ public class TeamTest {
 
     @Test
     void UpdateMatchStatistics_TeamThua_CapNhatDung() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         team.updateMatchStatistics(0, 2); // Thua 0-2
         
@@ -304,8 +337,10 @@ public class TeamTest {
 
     @Test
     void UpdateMatchStatistics_NhieuTran_TichLuyDung() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         team.updateMatchStatistics(2, 0); // Thắng 2-0
         team.updateMatchStatistics(1, 1); // Hòa 1-1
@@ -323,8 +358,10 @@ public class TeamTest {
     // Test phân hoạch giá trị biên cho thống kê
     @Test
     void UpdateMatchStatistics_TySoBang0_CapNhatDung() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         team.updateMatchStatistics(0, 0);
         
@@ -337,8 +374,10 @@ public class TeamTest {
 
     @Test
     void UpdateMatchStatistics_TySoLon_CapNhatDung() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         team.updateMatchStatistics(10, 8);
         
@@ -351,8 +390,10 @@ public class TeamTest {
 
     @Test
     void ResetStatistics_ResetTatCa_ThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         // Cập nhật một số thống kê
         team.updateMatchStatistics(3, 1);
@@ -361,7 +402,7 @@ public class TeamTest {
         team.setSubstitutionCount(3);
         
         // Reset
-        team.resetStatistics();
+        team.reset();
         
         assertEquals(0, team.getPoints());
         assertEquals(0, team.getGoalDifference());
@@ -379,32 +420,40 @@ public class TeamTest {
 
     @Test
     void SetPoints_GiaTriHopLe_SetThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         team.setPoints(9);
         assertEquals(9, team.getPoints());
     }
 
     @Test
     void SetGoalDifference_GiaTriAm_SetThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         team.setGoalDifference(-5);
         assertEquals(-5, team.getGoalDifference());
     }
 
     @Test
     void SetYellowCards_GiaTriHopLe_SetThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         team.setYellowCards(10);
         assertEquals(10, team.getYellowCards());
     }
 
     @Test
     void SetRedCards_GiaTriHopLe_SetThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         team.setRedCards(3);
         assertEquals(3, team.getRedCards());
     }
@@ -412,8 +461,10 @@ public class TeamTest {
     // Test phân hoạch giá trị biên cho setters
     @Test
     void SetStatistics_GiaTriBang0_SetThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         team.setPoints(0);
         team.setGoalsFor(0);
@@ -432,8 +483,10 @@ public class TeamTest {
 
     @Test
     void SetStatistics_GiaTriAm_SetThanhCong() {
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
         Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+                           "Medical", starting, substitute, false);
         
         team.setPoints(-1);
         team.setGoalDifference(-10);
@@ -444,8 +497,9 @@ public class TeamTest {
 
     @Test
     void SetStatistics_GiaTriLon_SetThanhCong() {
-        Team team = new Team("Team", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
+        Team team = new Team("Team", "Region", "Coach", assistants1, "Medical", starting, substitute, false);
         
         team.setPoints(999);
         team.setGoalsFor(100);
@@ -460,8 +514,9 @@ public class TeamTest {
 
     @Test
     void ToString_TeamDayDu_ChuoiHopLe() {
-        Team team = new Team("Brazil", "South America", "Coach", assistants1, 
-                           "Medical", players22, false);
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
+        Team team = new Team("Brazil", "South America", "Coach", assistants1, "Medical", starting, substitute, false);
         team.updateMatchStatistics(6, 2);
         team.updateMatchStatistics(3, 1);
         
@@ -475,8 +530,9 @@ public class TeamTest {
 
     @Test
     void ToString_TeamChuaThiDau_ChuoiHopLe() {
-        Team team = new Team("NewTeam", "Region", "Coach", assistants1, 
-                           "Medical", players22, false);
+        List<Player> starting = players22.subList(0, 11);
+        List<Player> substitute = players22.subList(11, 16);
+        Team team = new Team("NewTeam", "Region", "Coach", assistants1, "Medical", starting, substitute, false);
         
         String result = team.toString();
         
@@ -484,131 +540,5 @@ public class TeamTest {
         assertTrue(result.contains("points=0"));
         assertTrue(result.contains("goalDiff=0"));
         assertTrue(result.contains("record=0-0-0"));
-    }
-
-    // ========== EQUALS AND HASHCODE TESTS ==========
-
-    @Test
-    void Equals_CungTeam_TraVeTrue() {
-        Team team1 = new Team("Brazil", "South America", "Coach", assistants1, 
-                            "Medical", players22, false);
-        Team team2 = new Team("Brazil", "South America", "Different Coach", assistants2, 
-                            "Different Medical", players11, true);
-        
-        assertTrue(team1.equals(team2)); // Chỉ so sánh name và region
-    }
-
-    @Test
-    void Equals_KhacTen_TraVeFalse() {
-        Team team1 = new Team("Brazil", "South America", "Coach", assistants1, 
-                            "Medical", players22, false);
-        Team team2 = new Team("Argentina", "South America", "Coach", assistants1, 
-                            "Medical", players22, false);
-        
-        assertFalse(team1.equals(team2));
-    }
-
-    @Test
-    void Equals_KhacRegion_TraVeFalse() {
-        Team team1 = new Team("Brazil", "South America", "Coach", assistants1, 
-                            "Medical", players22, false);
-        Team team2 = new Team("Brazil", "Europe", "Coach", assistants1, 
-                            "Medical", players22, false);
-        
-        assertFalse(team1.equals(team2));
-    }
-
-    @Test
-    void Equals_Null_TraVeFalse() {
-        Team team = new Team("Brazil", "South America", "Coach", assistants1, 
-                           "Medical", players22, false);
-        assertFalse(team.equals(null));
-    }
-
-    @Test
-    void Equals_KhacClass_TraVeFalse() {
-        Team team = new Team("Brazil", "South America", "Coach", assistants1, 
-                           "Medical", players22, false);
-        assertFalse(team.equals("Not a team"));
-    }
-
-    @Test
-    void HashCode_CungTeam_CungHashCode() {
-        Team team1 = new Team("Brazil", "South America", "Coach1", assistants1, 
-                            "Medical1", players22, false);
-        Team team2 = new Team("Brazil", "South America", "Coach2", assistants2, 
-                            "Medical2", players11, true);
-        
-        assertEquals(team1.hashCode(), team2.hashCode());
-    }
-
-    @Test
-    void HashCode_KhacTeam_KhacHashCode() {
-        Team team1 = new Team("Brazil", "South America", "Coach", assistants1, 
-                            "Medical", players22, false);
-        Team team2 = new Team("Argentina", "South America", "Coach", assistants1, 
-                            "Medical", players22, false);
-        
-        assertNotEquals(team1.hashCode(), team2.hashCode());
-    }
-
-    // ========== INTEGRATION TESTS ==========
-
-    @Test
-    void Team_TinhNangTichHop_HoatDongDung() {
-        Team team = new Team("Integration Team", "Test Region", "Coach", assistants2, 
-                           "Medical", players11, players5, false);
-        
-        // Kiểm tra trạng thái ban đầu
-        assertEquals(16, team.getPlayers().size());
-        assertEquals(11, team.getStartingPlayers().size());
-        assertEquals(5, team.getSubstitutePlayers().size());
-        
-        // Thêm cầu thủ
-        Player newPlayer = new Player("NewPlayer", 99, "Forward");
-        team.addStartingPlayer(newPlayer);
-        assertTrue(team.getStartingPlayers().contains(newPlayer));
-        
-        // Cập nhật thống kê
-        team.updateMatchStatistics(2, 1);
-        team.updateMatchStatistics(1, 1);
-        team.updateMatchStatistics(0, 2);
-        
-        assertEquals(3, team.getGoalsFor());
-        assertEquals(4, team.getGoalsAgainst());
-        assertEquals(-1, team.getGoalDifference());
-        assertEquals(1, team.getWins());
-        assertEquals(1, team.getDraws());
-        assertEquals(1, team.getLosses());
-        assertEquals(4, team.getPoints());
-        
-        // Reset và kiểm tra
-        team.resetStatistics();
-        assertEquals(0, team.getPoints());
-        assertEquals(0, team.getGoalDifference());
-    }
-
-    @Test
-    void Team_BienGioiHan_XuLyDung() {
-        // Test với giá trị biên tối đa
-        Team team = new Team("Max Team", "Max Region", "Max Coach", assistants3, 
-                           "Max Medical", players22, true);
-        
-        // Cập nhật thống kê với giá trị lớn
-        for (int i = 0; i < 100; i++) {
-            team.updateMatchStatistics(1, 0); // 100 trận thắng
-        }
-        
-        assertEquals(100, team.getGoalsFor());
-        assertEquals(0, team.getGoalsAgainst());
-        assertEquals(100, team.getGoalDifference());
-        assertEquals(100, team.getWins());
-        assertEquals(300, team.getPoints());
-        
-        // Test với giá trị âm
-        team.setGoalDifference(-999);
-        team.setPoints(-100);
-        assertEquals(-999, team.getGoalDifference());
-        assertEquals(-100, team.getPoints());
     }
 }

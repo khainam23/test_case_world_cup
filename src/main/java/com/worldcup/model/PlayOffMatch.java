@@ -5,7 +5,7 @@ public class PlayOffMatch extends Match{
     private boolean isFirstLeg;
     private boolean isSecondLeg;
 
-    public PlayOffMatch(Team teamA, Team teamB, List<Player> startingPlayersTeamA, List<Player> substitutePlayersTeamA, List<Player> startingPlayersTeamB, List<Player> substitutePlayersTeamB, boolean isKnockout) {
-        super(teamA, teamB, isKnockout);
+    public PlayOffMatch(Team teamA, Team teamB, String venue, String referee, boolean isKnockout) {
+        super(teamA, teamB, venue, referee, isKnockout);
     }
 }

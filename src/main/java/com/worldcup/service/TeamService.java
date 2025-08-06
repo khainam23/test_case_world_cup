@@ -1,5 +1,6 @@
 package com.worldcup.service;
 
+import com.worldcup.model.Group;
 import com.worldcup.model.Player;
 import com.worldcup.model.Team;
 import com.worldcup.database.DatabaseManager;
@@ -12,63 +13,63 @@ import java.util.*;
  */
 public class TeamService {
     private DatabaseManager dbManager;
-    
+
     public TeamService(DatabaseManager dbManager) {
         this.dbManager = dbManager;
     }
-    
+
     /**
-     * Lấy tất cả teams từ database và tính toán thống kê bằng Java
+     * Lấy tất cả teams từ database và tính toán thống kê
      */
     public List<Team> getAllTeamsWithCalculatedStats(int tournamentId) throws SQLException {
         List<Team> teams = new ArrayList<>();
-        
+
         String sql = """
             SELECT t.id, t.name, t.region, t.coach, t.medical_staff, t.is_host,
                    t.group_id, t.tournament_id
             FROM teams t
             WHERE t.tournament_id = ?
         """;
-        
+
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setInt(1, tournamentId);
         ResultSet rs = pstmt.executeQuery();
-        
+
         while (rs.next()) {
             // Tạo team object với dữ liệu cơ bản
             Team team = createTeamFromResultSet(rs);
-            
-            // Tính toán lại các thống kê bằng Java
+
+            // Tính toán lại các thống kê 
             calculateTeamStatistics(team, tournamentId);
-            
+
             teams.add(team);
         }
-        
+
         rs.close();
         pstmt.close();
-        
+
         return teams;
     }
-    
+
     /**
-     * Tính toán thống kê cho một team bằng Java thay vì SQL
+     * Tính toán thống kê cho một team  thay vì SQL
      */
     private void calculateTeamStatistics(Team team, int tournamentId) throws SQLException {
         // Tính toán từ matches
         calculateMatchStatistics(team, tournamentId);
-        
+
         // Tính toán từ goals
         calculateGoalStatistics(team, tournamentId);
-        
+
         // Tính toán từ cards
         calculateCardStatistics(team, tournamentId);
-        
+
         // Tính toán từ substitutions
         calculateSubstitutionStatistics(team, tournamentId);
     }
-    
+
     /**
-     * Tính toán thống kê trận đấu bằng Java (CHỈ VÒNG BẢNG cho việc sắp xếp)
+     * Tính toán thống kê trận đấu  (CHỈ VÒNG BẢNG cho việc sắp xếp)
      */
     private void calculateMatchStatistics(Team team, int tournamentId) throws SQLException {
         String sql = """
@@ -81,25 +82,25 @@ public class TeamService {
             AND ta.tournament_id = ? AND tb.tournament_id = ?
             AND m.match_type = 'GROUP'
         """;
-        
+
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setString(1, team.getName());
         pstmt.setString(2, team.getName());
         pstmt.setInt(3, tournamentId);
         pstmt.setInt(4, tournamentId);
         ResultSet rs = pstmt.executeQuery();
-        
+
         int wins = 0, draws = 0, losses = 0;
         int goalsFor = 0, goalsAgainst = 0;
-        
+
         while (rs.next()) {
             boolean isTeamA = team.getName().equals(rs.getString("team_a_name"));
             int teamScore = isTeamA ? rs.getInt("team_a_score") : rs.getInt("team_b_score");
             int opponentScore = isTeamA ? rs.getInt("team_b_score") : rs.getInt("team_a_score");
-            
+
             goalsFor += teamScore;
             goalsAgainst += opponentScore;
-            
+
             if (teamScore > opponentScore) {
                 wins++;
             } else if (teamScore == opponentScore) {
@@ -108,18 +109,18 @@ public class TeamService {
                 losses++;
             }
         }
-        
+
         // Cập nhật thống kê vào team object
         updateTeamMatchStats(team, wins, draws, losses, goalsFor, goalsAgainst);
-        
+
         rs.close();
         pstmt.close();
     }
-    
+
     /**
      * Cập nhật thống kê trận đấu vào team object
      */
-    private void updateTeamMatchStats(Team team, int wins, int draws, int losses, 
+    private void updateTeamMatchStats(Team team, int wins, int draws, int losses,
                                     int goalsFor, int goalsAgainst) {
         // Cập nhật tất cả thống kê trận đấu
         team.setWins(wins);
@@ -127,18 +128,18 @@ public class TeamService {
         team.setLosses(losses);
         team.setGoalsFor(goalsFor);
         team.setGoalsAgainst(goalsAgainst);
-        
+
         // Tính điểm: thắng = 3 điểm, hòa = 1 điểm, thua = 0 điểm
         int points = wins * 3 + draws * 1;
         team.setPoints(points);
-        
+
         // Tính hiệu số bàn thắng
         int goalDifference = goalsFor - goalsAgainst;
         team.setGoalDifference(goalDifference);
     }
-    
+
     /**
-     * Tính toán thống kê bàn thắng bằng Java
+     * Tính toán thống kê bàn thắng
      */
     private void calculateGoalStatistics(Team team, int tournamentId) throws SQLException {
         String sql = """
@@ -147,22 +148,22 @@ public class TeamService {
             JOIN teams t ON g.team_id = t.id
             WHERE t.name = ? AND t.tournament_id = ?
         """;
-        
+
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setString(1, team.getName());
         pstmt.setInt(2, tournamentId);
         ResultSet rs = pstmt.executeQuery();
-        
+
         // Lưu ý: Ở đây chúng ta vẫn phải dùng COUNT() để lấy dữ liệu thô
         // Nhưng logic tính toán sẽ được thực hiện ở Java
-        // Trong tương lai có thể load tất cả goals và tính toán hoàn toàn bằng Java
-        
+        // Trong tương lai có thể load tất cả goals và tính toán hoàn toàn 
+
         rs.close();
         pstmt.close();
     }
-    
+
     /**
-     * Tính toán thống kê thẻ bằng Java (CHỈ VÒNG BẢNG cho việc sắp xếp)
+     * Tính toán thống kê thẻ  (CHỈ VÒNG BẢNG cho việc sắp xếp)
      */
     private void calculateCardStatistics(Team team, int tournamentId) throws SQLException {
         String sql = """
@@ -173,34 +174,34 @@ public class TeamService {
             WHERE t.name = ? AND t.tournament_id = ? AND m.match_type = 'GROUP'
             GROUP BY card_type
         """;
-        
+
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setString(1, team.getName());
         pstmt.setInt(2, tournamentId);
         ResultSet rs = pstmt.executeQuery();
-        
+
         int yellowCards = 0, redCards = 0;
-        
+
         while (rs.next()) {
             String cardType = rs.getString("card_type");
             int count = rs.getInt("card_count");
-            
+
             if ("YELLOW".equals(cardType)) {
                 yellowCards = count;
             } else if ("RED".equals(cardType)) {
                 redCards = count;
             }
         }
-        
+
         team.setYellowCards(yellowCards);
         team.setRedCards(redCards);
-        
+
         rs.close();
         pstmt.close();
     }
-    
+
     /**
-     * Tính toán thống kê thay người bằng Java
+     * Tính toán thống kê thay người
      */
     private void calculateSubstitutionStatistics(Team team, int tournamentId) throws SQLException {
         String sql = """
@@ -209,21 +210,21 @@ public class TeamService {
             JOIN teams t ON s.team_id = t.id
             WHERE t.name = ? AND t.tournament_id = ?
         """;
-        
+
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setString(1, team.getName());
         pstmt.setInt(2, tournamentId);
         ResultSet rs = pstmt.executeQuery();
-        
+
         if (rs.next()) {
             int substitutionCount = rs.getInt("substitution_count");
             team.setSubstitutionCount(substitutionCount);
         }
-        
+
         rs.close();
         pstmt.close();
     }
-    
+
     /**
      * Tạo Team object từ ResultSet
      */
@@ -231,59 +232,58 @@ public class TeamService {
         // Tạo team với constructor cơ bản
         List<String> assistantCoaches = new ArrayList<>(); // Sẽ load riêng nếu cần
         List<Player> players = new ArrayList<>(); // Sẽ load riêng nếu cần
-        
+
         Team team = new Team(
             rs.getString("name"),
             rs.getString("region"),
             rs.getString("coach"),
             assistantCoaches,
             rs.getString("medical_staff"),
-            players,
             rs.getBoolean("is_host")
         );
-        
+
         // Set các thông tin cơ bản
         team.setId(rs.getInt("id"));
         team.setGroupId(rs.getInt("group_id"));
         team.setTournamentId(rs.getInt("tournament_id"));
-        
+
         return team;
     }
-    
+
     /**
      * Tạo Team object với đầy đủ players từ ResultSet
      */
     private Team createTeamWithPlayersFromResultSet(ResultSet rs) throws SQLException {
         // Tạo team cơ bản
         Team team = createTeamFromResultSet(rs);
-        
+
         // Load players từ database
         loadPlayersForTeam(team);
-        
+
         return team;
     }
-    
+
     /**
      * Load players cho một team từ database
      */
     private void loadPlayersForTeam(Team team) throws SQLException {
         // Debug logging
-       
-        
+
+
         String sql = """
             SELECT id, name, jersey_number, position, is_starting, yellow_cards, red_cards, is_eligible
             FROM players
             WHERE team_id = ?
             ORDER BY is_starting DESC, jersey_number ASC
         """;
-        
+
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setInt(1, team.getId());
         ResultSet rs = pstmt.executeQuery();
-        
+
         List<Player> startingPlayers = new ArrayList<>();
         List<Player> substitutePlayers = new ArrayList<>();
-        
+
         while (rs.next()) {
             Player player = new Player(
                 rs.getString("name"),
@@ -294,39 +294,39 @@ public class TeamService {
             player.setYellowCards(rs.getInt("yellow_cards"));
             player.setRedCards(rs.getInt("red_cards"));
             player.setEligible(rs.getBoolean("is_eligible"));
-            
+
             if (rs.getBoolean("is_starting")) {
                 startingPlayers.add(player);
             } else {
                 substitutePlayers.add(player);
             }
         }
-        
+
         rs.close();
         pstmt.close();
-        
+
         // Debug logging
-       
-        
+
+
         // Set players cho team
         team.setStartingPlayers(startingPlayers);
         team.setSubstitutePlayers(substitutePlayers);
     }
-    
+
     /**
-     * Sắp xếp teams theo thứ tự bảng xếp hạng bằng Java thay vì SQL ORDER BY
+     * Sắp xếp teams theo thứ tự bảng xếp hạng
      */
     public List<Team> sortTeamsByStanding(List<Team> teams) {
         teams.sort(new TeamStandingComparator());
         return teams;
     }
-    
+
     /**
-     * Lấy teams theo group và sắp xếp bằng Java
+     * Lấy teams theo group và sắp xếp
      */
     public List<Team> getTeamsByGroupSorted(int tournamentId, String groupName) throws SQLException {
         List<Team> teams = new ArrayList<>();
-        
+
         String sql = """
             SELECT t.id, t.name, t.region, t.coach, t.medical_staff, t.is_host,
                    t.group_id, t.tournament_id
@@ -334,32 +334,32 @@ public class TeamService {
             JOIN groups g ON t.group_id = g.id
             WHERE t.tournament_id = ? AND g.name = ?
         """;
-        
+
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setInt(1, tournamentId);
         pstmt.setString(2, groupName);
         ResultSet rs = pstmt.executeQuery();
-        
+
         while (rs.next()) {
             Team team = createTeamFromResultSet(rs);
             calculateTeamStatistics(team, tournamentId);
             teams.add(team);
         }
-        
+
         rs.close();
         pstmt.close();
-        
-        // Sắp xếp bằng Java thay vì SQL ORDER BY
+
+        // Sắp xếp  thay vì SQL ORDER BY
         return sortTeamsByStanding(teams);
     }
-    
+
     /**
-     * Lấy teams theo group với đầy đủ players và sắp xếp bằng Java
+     * Lấy teams theo group và sắp xếp
      * Sử dụng cho knockout stage
      */
-    public List<Team> getTeamsByGroupSortedWithPlayers(int tournamentId, String groupName) throws SQLException {
+    public List<Team> getTeamsByGroupSortedWithPlayers(int tournamentId, Group group) throws SQLException {
         List<Team> teams = new ArrayList<>();
-        
+
         String sql = """
             SELECT t.id, t.name, t.region, t.coach, t.medical_staff, t.is_host,
                    t.group_id, t.tournament_id
@@ -367,25 +367,25 @@ public class TeamService {
             JOIN groups g ON t.group_id = g.id
             WHERE t.tournament_id = ? AND g.name = ?
         """;
-        
+
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setInt(1, tournamentId);
-        pstmt.setString(2, groupName);
+        pstmt.setString(2, group.getName());
         ResultSet rs = pstmt.executeQuery();
-        
+
         while (rs.next()) {
             Team team = createTeamWithPlayersFromResultSet(rs);
             calculateTeamStatistics(team, tournamentId);
             teams.add(team);
         }
-        
+
         rs.close();
         pstmt.close();
-        
-        // Sắp xếp bằng Java thay vì SQL ORDER BY
+
+        // Sắp xếp
         return sortTeamsByStanding(teams);
     }
-    
+
     /**
      * Inner class Comparator để sắp xếp teams theo thứ tự bảng xếp hạng
      * Tuân theo quy định FIFA: Điểm -> Hiệu số -> Thẻ phạt -> Đối đầu -> Bốc thăm
@@ -399,13 +399,13 @@ public class TeamService {
             if (pointsComparison != 0) {
                 return pointsComparison;
             }
-            
+
             // 2. So sánh hiệu số bàn thắng (cao hơn = tốt hơn)
             int goalDiffComparison = Integer.compare(t2.getGoalDifference(), t1.getGoalDifference());
             if (goalDiffComparison != 0) {
                 return goalDiffComparison;
             }
-            
+
             // 3. So sánh số thẻ bị phạt (ít hơn = tốt hơn)
             // Quy định FIFA: 1 thẻ đỏ = 2 thẻ vàng
             int t1TotalCards = t1.getYellowCards() + (t1.getRedCards() * 2);
@@ -414,10 +414,10 @@ public class TeamService {
             if (cardsComparison != 0) {
                 return cardsComparison;
             }
-            
+
             // 4. Kết quả đối đầu trực tiếp (chưa implement - cần thêm logic phức tạp)
             // TODO: Implement head-to-head comparison for exactly 2 teams
-            
+
             // 5. Bốc thăm (sử dụng tên đội để đảm bảo tính nhất quán)
             // Trong thực tế sẽ là random, nhưng để test ổn định ta dùng alphabetical
             return t1.getName().compareTo(t2.getName());

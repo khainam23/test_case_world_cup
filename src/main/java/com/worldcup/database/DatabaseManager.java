@@ -203,29 +203,6 @@
          stmt.execute(createTournamentStatsTable);
         
          stmt.close();
-         
-         // Run migrations for existing databases
-         runMigrations();
-     }
-     
-     /**
-      * Run database migrations for schema updates
-      */
-     private void runMigrations() throws SQLException {
-         // Check if winner_id column exists in matches table
-         try {
-             String checkColumn = "SELECT winner_id FROM matches LIMIT 1";
-             PreparedStatement pstmt = connection.prepareStatement(checkColumn);
-             pstmt.executeQuery();
-             pstmt.close();
-         } catch (SQLException e) {
-             // Column doesn't exist, add it
-             String addWinnerColumn = "ALTER TABLE matches ADD COLUMN winner_id INTEGER REFERENCES teams(id)";
-             Statement stmt = connection.createStatement();
-             stmt.execute(addWinnerColumn);
-             stmt.close();
-             
-         }
      }
 
      public Connection getConnection() {

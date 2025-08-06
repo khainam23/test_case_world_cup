@@ -20,7 +20,7 @@ public class Match {
     private String referee;
 
     private Integer winnerId; // winner_id trong DB
-    
+
     // Legacy fields for backward compatibility
     private int goalsTeamA;
     private int goalsTeamB;
@@ -30,7 +30,6 @@ public class Match {
     private boolean isFinished;
     private LocalDate date;
     private Type type;
-
     private final List<Goal> goals;
     private final List<Substitution> substitutions;
     private final Set<Player> sentOffPlayers;
@@ -38,7 +37,6 @@ public class Match {
     // Constants
     private final int regularHalfMinutes = 45;
     private final int halfTimeBreakMinutes = 15;
-    private Random random = new Random();
 
     public enum Type {
         GROUP("GROUP"),
@@ -59,7 +57,7 @@ public class Match {
     }
 
 
-    public Match(Team teamA, Team teamB, boolean isKnockout) {
+    public Match(Team teamA, Team teamB, String venue, String referee, boolean isKnockout) {
 
         if (teamA == null || teamB == null) {
             throw new IllegalArgumentException("Hai đội bóng không được null.");
@@ -69,24 +67,28 @@ public class Match {
             throw new IllegalArgumentException("Một trận đấu phải có hai đội bóng khác nhau.");
         }
 
+        if (teamA.getStartingPlayers().size() < 7 || teamB.getStartingPlayers().size() < 7) {
+            throw new IllegalArgumentException("Mỗi đội phải đăng ký đội hình chính có hơn 7 cầu thủ");
+        }
+
         if (teamA.getStartingPlayers().size() != 11 || teamB.getStartingPlayers().size() != 11) {
             throw new IllegalArgumentException("Mỗi đội phải có đúng 11 cầu thủ đá chính.");
         }
 
-        if (teamA.getSubstitutePlayers().size() < 5 || teamB.getSubstitutePlayers().size() < 5) {
-            throw new IllegalArgumentException("Mỗi đội phải có ít nhất 5 cầu thủ dự bị.");
+        if (teamA.getSubstitutePlayers().size() > 5 || teamB.getSubstitutePlayers().size() > 5) {
+            throw new IllegalArgumentException("Mỗi đội có tối đa 5 cầu thủ dự bị.");
         }
 
         this.teamA = teamA;
         this.teamB = teamB;
         this.teamAId = teamA.getId();
         this.teamBId = teamB.getId();
-        
+
         // Khởi tạo database fields
         this.teamAScore = 0;
         this.teamBScore = 0;
         this.matchType = isKnockout ? "KNOCKOUT" : "GROUP";
-        
+
         // Legacy fields
         this.goalsTeamA = 0;
         this.goalsTeamB = 0;
@@ -98,6 +100,8 @@ public class Match {
         this.isFinished = false;
 
         this.sentOffPlayers = new HashSet<>();
+        this.venue = venue;
+        this.referee = referee;
     }
 
     public void addGoal(Goal goal) {
@@ -144,42 +148,23 @@ public class Match {
     }
 
     public boolean addSubstitution(Substitution substitution) {
-        if (substitution == null) {
-            System.out.println(" Substitution is null");
+        Player playerOut = substitution.getOutPlayer();
+        Player playerIn = substitution.getInPlayer();
+
+        boolean playerOutInMatch = isPlayerInMatch(playerOut);
+        boolean playerInAlreadyPlaying = isPlayerInMatch(playerIn);
+
+        if (!playerOutInMatch || playerInAlreadyPlaying) {
+            System.out.println("Substitution invalid: playerOut not in match or playerIn already playing.");
             return false;
         }
 
-        Player outPlayer = substitution.getOutPlayer();
-        Player inPlayer = substitution.getInPlayer();
-        
-
-        if (!isPlayerInMatch(outPlayer)) {
-            System.out.println(" OutPlayer " + outPlayer.getName() + " not in match");
-            return false;
-        }
-
-        // Check if inPlayer is already playing (in starting lineup)
-        if (teamA.getStartingPlayers().contains(inPlayer) || teamB.getStartingPlayers().contains(inPlayer)) {
-            return false;
-        }
-        
-        // Check if inPlayer is available as substitute for the correct team
-        Team playerTeam = null;
-        if (teamA.getSubstitutePlayers().contains(inPlayer)) {
-            playerTeam = teamA;
-        } else if (teamB.getSubstitutePlayers().contains(inPlayer)) {
-            playerTeam = teamB;
-        }
-        
-        if (playerTeam == null) {
-            return false;
-        }
-
+        Team team = substitution.getTeam();
         // Verify outPlayer and inPlayer are from the same team
-        if (playerTeam.getStartingPlayers().contains(outPlayer)) {
-            playerTeam.getModifiableStartingPlayers().remove(outPlayer);
-            playerTeam.getModifiableStartingPlayers().add(inPlayer);
-            playerTeam.getModifiableSubstitutePlayers().remove(inPlayer);
+        if (team.getStartingPlayers().contains(playerOut) && team.getSubstitutePlayers().contains(playerIn)) {
+            team.getStartingPlayers().remove(playerOut);
+            team.getStartingPlayers().add(playerIn);
+            team.getSubstitutePlayers().remove(playerIn);
         } else {
             return false;
         }
@@ -196,11 +181,11 @@ public class Match {
         List<Player> substitutePlayers;
 
         if (team.equals(teamA)) {
-            startingPlayers = teamA.getModifiableStartingPlayers();
-            substitutePlayers = teamA.getModifiableSubstitutePlayers();
+            startingPlayers = teamA.getStartingPlayers();
+            substitutePlayers = teamA.getSubstitutePlayers();
         } else if (team.equals(teamB)) {
-            startingPlayers = teamB.getModifiableStartingPlayers();
-            substitutePlayers = teamB.getModifiableSubstitutePlayers();
+            startingPlayers = teamB.getStartingPlayers();
+            substitutePlayers = teamB.getSubstitutePlayers();
         } else {
             throw new IllegalArgumentException("Đội không tham gia trận đấu.");
         }
@@ -230,11 +215,9 @@ public class Match {
     }
 
 
-    public boolean isPlayerInMatch(Player player) {
-        return teamA.getStartingPlayers().contains(player) ||
-                teamA.getSubstitutePlayers().contains(player) ||
-                teamB.getStartingPlayers().contains(player) ||
-                teamB.getSubstitutePlayers().contains(player);
+    public boolean isPlayerInMatch(Player playerOut) {
+        return teamA.getStartingPlayers().contains(playerOut) ||
+                teamB.getStartingPlayers().contains(playerOut);
     }
 
     public void removePlayerFromMatch(Player player, Team team) {
@@ -310,88 +293,85 @@ public class Match {
     public Team getTeamB() {
         return teamB;
     }
-    
+
     // Getters và Setters cho database fields
     public int getId() {
         return id;
     }
-    
+
     public void setId(int id) {
         this.id = id;
     }
-    
+
     public int getTeamAId() {
         return teamAId;
     }
-    
+
     public void setTeamAId(int teamAId) {
         this.teamAId = teamAId;
     }
-    
+
     public int getTeamBId() {
         return teamBId;
     }
-    
+
     public void setTeamBId(int teamBId) {
         this.teamBId = teamBId;
     }
-    
+
     public int getTeamAScore() {
         return teamAScore;
     }
-    
+
     public void setTeamAScore(int teamAScore) {
         this.teamAScore = teamAScore;
         this.goalsTeamA = teamAScore; // Sync với legacy field
     }
-    
+
     public int getTeamBScore() {
         return teamBScore;
     }
-    
+
     public void setTeamBScore(int teamBScore) {
         this.teamBScore = teamBScore;
         this.goalsTeamB = teamBScore; // Sync với legacy field
     }
-    
+
     public String getMatchType() {
         return matchType;
     }
-    
+
     public void setMatchType(String matchType) {
         this.matchType = matchType;
     }
-    
+
     public String getMatchDate() {
         return matchDate;
     }
-    
+
     public void setMatchDate(String matchDate) {
         this.matchDate = matchDate;
     }
-    
 
-    
+
     public Integer getWinnerId() {
         return winnerId;
     }
-    
+
     public void setWinnerId(Integer winnerId) {
         this.winnerId = winnerId;
     }
 
     // Phương thức getGroupId và setGroupId đã bị xóa vì cột group_id đã bị loại bỏ
     // Phương thức getRoundNumber và setRoundNumber đã bị xóa vì cột round_number đã bị loại bỏ
-    
+
     /**
      * Cập nhật kết quả trận đấu và tính toán winner bằng Java
      */
     public void updateMatchResult(int teamAScore, int teamBScore) {
         this.teamAScore = teamAScore;
         this.teamBScore = teamBScore;
-        this.goalsTeamA = teamAScore;
-        this.goalsTeamB = teamBScore;
-        
+
         // Tính toán winner bằng Java logic
         if (teamAScore > teamBScore) {
             this.winnerId = this.teamAId;
@@ -400,10 +380,10 @@ public class Match {
         } else {
             this.winnerId = null; // Draw
         }
-        
+
         this.isFinished = true;
     }
-    
+
     /**
      * Lấy team thắng cuộc bằng Java logic
      */
@@ -411,20 +391,80 @@ public class Match {
         if (winnerId == null) {
             return null; // Draw
         }
-        
+
         if (winnerId == teamAId) {
             return teamA;
         } else if (winnerId == teamBId) {
             return teamB;
         }
-        
+
         return null;
     }
 
-    
+
     @Override
     public String toString() {
-        return String.format("Match{%s %d - %d %s, finished=%s}", 
-                           teamA.getName(), teamAScore, teamBScore, teamB.getName(), isFinished);
+        return String.format("Match{%s %d - %d %s, finished=%s}",
+                teamA.getName(), teamAScore, teamBScore, teamB.getName(), isFinished);
+    }
+
+    public String getVenue() {
+        return venue;
+    }
+
+    public void setVenue(String venue) {
+        this.venue = venue;
+    }
+
+    public String getReferee() {
+        return referee;
+    }
+
+    public void setReferee(String referee) {
+        this.referee = referee;
+    }
+
+    public void setGoalsTeamA(int goalsTeamA) {
+        this.goalsTeamA = goalsTeamA;
+    }
+
+    public void setGoalsTeamB(int goalsTeamB) {
+        this.goalsTeamB = goalsTeamB;
+    }
+
+    public int getYellowCards() {
+        return yellowCards;
+    }
+
+    public int getRedCards() {
+        return redCards;
+    }
+
+    public void setRedCards(int redCards) {
+        this.redCards = redCards;
+    }
+
+    public void setFinished(boolean finished) {
+        isFinished = finished;
+    }
+
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public Type getType() {
+        return type;
+    }
+
+    public void setType(Type type) {
+        this.type = type;
+    }
+
+    public Set<Player> getSentOffPlayers() {
+        return sentOffPlayers;
     }
 }

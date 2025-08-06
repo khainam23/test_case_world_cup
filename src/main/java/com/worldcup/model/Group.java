@@ -8,27 +8,25 @@ import java.util.List;
 public class Group {
     private int id;
     private String name;
-    private List<Team> teamList;
+    private List<Team> teams;
     private List<Match> matches;
 
-    public Group(int id, String name, List<Team> teamList, List<Match> matches) {
-        this.id = id;
+    public Group(String name, List<Team> teams, List<Match> matches) {
         this.name = name;
-        this.teamList = teamList;
+        this.teams = teams;
         this.matches = matches;
     }
 
-    public Group(int id, String name) {
-        this.id = id;
+    public Group(String name) {
         this.name = name;
-        this.teamList = new ArrayList<>();
+        this.teams = new ArrayList<>();
         this.matches = new ArrayList<>();
     }
 
 
     public void addTeam(Team team) {
-        if (team != null && !teamList.contains(team)) {
-            teamList.add(team);
+        if (team != null && !teams.contains(team)) {
+            teams.add(team);
         }
     }
 
@@ -38,16 +36,12 @@ public class Group {
         }
     }
 
-    public List<Team> getTeams() {
-        return teamList;
-    }
-
     public void setName(String name) {
         this.name = name;
     }
 
-    public void setTeamList(List<Team> teamList) {
-        this.teamList = teamList != null ? teamList : new ArrayList<>();
+    public void setTeams(List<Team> teams) {
+        this.teams = teams != null ? teams : new ArrayList<>();
     }
 
     public void setMatches(List<Match> matches) {
@@ -58,8 +52,8 @@ public class Group {
         return name;
     }
 
-    public List<Team> getTeamList() {
-        return teamList;
+    public List<Team> getTeams() {
+        return teams;
     }
 
     public List<Match> getMatches() {
@@ -70,12 +64,16 @@ public class Group {
     public String toString() {
         return "Group{" +
                 "name='" + name + '\'' +
-                ", teamList=" + teamList +
+                ", teamList=" + teams +
                 ", matches=" + matches +
                 '}';
     }
 
     public int getId() {
         return this.id;
+    }
+
+    public void setId(int groupId) {
+        id = groupId;
     }
 }

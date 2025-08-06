@@ -1,319 +1,249 @@
 package com.worldcup.service;
 
-import com.worldcup.database.DatabaseManager;
-import java.sql.*;
-import java.util.*;
+import com.worldcup.manager.ObjectManager;
+import com.worldcup.model.*;
+import com.worldcup.repository.MatchRepository;
+import com.worldcup.repository.TeamRepository;
+
+import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.Optional;
 
 /**
- * Service class để xử lý logic business liên quan đến Match
- * Tuân theo Single Responsibility Principle
+ * OOP-based Service class cho Match operations
+ * Thay thế các SQL operations bằng Repository pattern
  */
 public class MatchService {
-    private DatabaseManager dbManager;
-    
-    public MatchService(DatabaseManager dbManager) {
-        this.dbManager = dbManager;
+
+    private final ObjectManager objectManager;
+    private final MatchRepository matchRepository;
+    private final TeamRepository teamRepository;
+
+    public MatchService(ObjectManager objectManager) {
+        this.objectManager = objectManager;
+        this.matchRepository = objectManager.getMatchRepository();
+        this.teamRepository = objectManager.getTeamRepository();
     }
-    
+
     /**
-     * Lấy tất cả matches và sắp xếp bằng Java thay vì SQL ORDER BY
+     * Tạo và lưu match
      */
-    public List<MatchResult> getAllMatchesWithCalculatedResults(int tournamentId) throws SQLException {
-        List<MatchResult> matches = new ArrayList<>();
-        
-        String sql = """
-            SELECT m.id, m.team_a_score, m.team_b_score, m.match_type, 
-                   m.match_date, m.venue, m.referee, m.status,
-                   ta.name as team_a_name, tb.name as team_b_name,
-                   g.name as group_name
-            FROM matches m
-            JOIN teams ta ON m.team_a_id = ta.id
-            JOIN teams tb ON m.team_b_id = tb.id
-            LEFT JOIN (
-                SELECT t.id, g.name 
-                FROM teams t 
-                JOIN groups g ON t.group_id = g.id
-            ) g ON m.team_a_id = g.id
-            WHERE ta.tournament_id = ? AND tb.tournament_id = ?
-        """;
-        
-        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-        pstmt.setInt(1, tournamentId);
-        pstmt.setInt(2, tournamentId);
-        ResultSet rs = pstmt.executeQuery();
-        
-        while (rs.next()) {
-            MatchResult match = new MatchResult();
-            match.id = rs.getInt("id");
-            match.teamAName = rs.getString("team_a_name");
-            match.teamBName = rs.getString("team_b_name");
-            match.teamAScore = rs.getInt("team_a_score");
-            match.teamBScore = rs.getInt("team_b_score");
-            match.matchType = rs.getString("match_type");
-            match.matchDate = rs.getString("match_date");
-            match.venue = rs.getString("venue");
-            match.referee = rs.getString("referee");
-            match.status = rs.getString("status");
-            match.groupName = rs.getString("group_name");
-            
-            // Tính toán winner bằng Java thay vì SQL
-            match.winnerName = calculateWinner(match.teamAName, match.teamBName, 
-                                             match.teamAScore, match.teamBScore);
-            
-            matches.add(match);
+    public Match createMatch(Team teamA, Team teamB, String venue, String referee, boolean isKnockout) throws Exception {
+        Match match = new Match(teamA, teamB, venue, referee, isKnockout);
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+        String matchDate = dateFormat.format(new java.util.Date());
+        match.setMatchDate(matchDate);
+
+        int matchId = matchRepository.save(match, venue, referee);
+        match.setId(matchId);
+
+        return match;
+    }
+
+    /**
+     * Cập nhật kết quả trận đấu và lưu vào database
+     */
+    public void updateResult(Match match, int teamAScore, int teamBScore) throws Exception {
+        // Cập nhật kết quả trong Match object
+        match.updateMatchResult(teamAScore, teamBScore);
+
+        // Cập nhật thống kê teams
+        match.getTeamA().updateMatchStatistics(teamAScore, teamBScore);
+        match.getTeamB().updateMatchStatistics(teamBScore, teamAScore);
+
+        // Lưu changes vào database
+        objectManager.updateMatchResult(match, teamAScore, teamBScore);
+        match.getTeamA().update();
+        match.getTeamB().update();
+    }
+
+    /**
+     * Tạo match events (goals, cards, substitutions) sử dụng OOP approach
+     */
+    public void generateEvents(Match match, int teamAScore, int teamBScore) throws Exception {
+        // Tạo goals cho team A
+        generateGoalsForTeam(match, match.getTeamA(), teamAScore);
+
+        // Tạo goals cho team B
+        generateGoalsForTeam(match, match.getTeamB(), teamBScore);
+
+        // Tạo cards và substitutions
+        generateCardsAndSubstitutions(match);
+    }
+
+    /**
+     * Tạo goals cho team sử dụng ObjectManager
+     */
+    private void generateGoalsForTeam(Match match, Team team, int goalCount) throws Exception {
+        for (int i = 0; i < goalCount; i++) {
+            List<Player> startingPlayers = team.getStartingPlayers();
+            if (!startingPlayers.isEmpty()) {
+                Player scorer = startingPlayers.get((int) (Math.random() * startingPlayers.size()));
+                
+                // Đảm bảo scorer có ID trước khi tạo goal
+                if (scorer.getId() == 0) {
+                    Optional<Integer> scorerId = objectManager.getPlayerRepository().getPlayerId(
+                        scorer.getName(), team.getName(), team.getTournamentId());
+                    if (scorerId.isPresent()) {
+                        scorer.setId(scorerId.get());
+                    }
+                }
+                
+                int minute = (int) (Math.random() * 90) + 1;
+
+                Goal goal = objectManager.createGoal(scorer, team, minute, match);
+                match.addGoal(goal);
+            }
         }
-        
-        rs.close();
-        pstmt.close();
-        
-        // Sắp xếp matches bằng Java thay vì SQL ORDER BY
-        matches.sort(new MatchDateComparator());
-        
-        return matches;
     }
-    
+
     /**
-     * Tính toán winner của trận đấu bằng Java
+     * Tạo cards và substitutions
      */
-    private String calculateWinner(String teamAName, String teamBName, int teamAScore, int teamBScore) {
-        if (teamAScore > teamBScore) {
-            return teamAName;
-        } else if (teamBScore > teamAScore) {
-            return teamBName;
+    private void generateCardsAndSubstitutions(Match match) throws Exception {
+        // Generate cards for both teams
+        generateCardsForTeam(match, match.getTeamA());
+        generateCardsForTeam(match, match.getTeamB());
+
+        // Generate substitutions for both teams
+        generateSubstitutionsForTeam(match, match.getTeamA());
+        generateSubstitutionsForTeam(match, match.getTeamB());
+    }
+
+    /**
+     * Tạo cards cho team
+     */
+    private void generateCardsForTeam(Match match, Team team) throws Exception {
+        // Lấy starting players từ Match object để đảm bảo đồng bộ
+        List<Player> startingPlayers;
+        if (team.equals(match.getTeamA())) {
+            startingPlayers = match.getTeamA().getStartingPlayers();
         } else {
-            return "Draw"; // Hòa
+            startingPlayers = match.getTeamB().getStartingPlayers();
         }
-    }
-    
-    /**
-     * Lấy matches theo group và sắp xếp bằng Java
-     */
-    public List<MatchResult> getMatchesByGroupSorted(int tournamentId, String groupName) throws SQLException {
-        List<MatchResult> matches = new ArrayList<>();
-        
-        String sql = """
-            SELECT m.id, m.team_a_score, m.team_b_score, m.match_type, 
-                   m.match_date, m.venue, m.referee, m.status,
-                   ta.name as team_a_name, tb.name as team_b_name,
-                   g.name as group_name
-            FROM matches m
-            JOIN teams ta ON m.team_a_id = ta.id
-            JOIN teams tb ON m.team_b_id = tb.id
-            JOIN (
-                SELECT t.id, g.name 
-                FROM teams t 
-                JOIN groups g ON t.group_id = g.id
-            ) g ON m.team_a_id = g.id
-            WHERE ta.tournament_id = ? AND tb.tournament_id = ? AND g.name = ?
-        """;
-        
-        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-        pstmt.setInt(1, tournamentId);
-        pstmt.setInt(2, tournamentId);
-        pstmt.setString(3, groupName);
-        ResultSet rs = pstmt.executeQuery();
-        
-        while (rs.next()) {
-            MatchResult match = new MatchResult();
-            match.id = rs.getInt("id");
-            match.teamAName = rs.getString("team_a_name");
-            match.teamBName = rs.getString("team_b_name");
-            match.teamAScore = rs.getInt("team_a_score");
-            match.teamBScore = rs.getInt("team_b_score");
-            match.matchType = rs.getString("match_type");
-            match.matchDate = rs.getString("match_date");
-            match.venue = rs.getString("venue");
-            match.referee = rs.getString("referee");
-            match.status = rs.getString("status");
-            match.groupName = rs.getString("group_name");
+
+        // Kiểm tra có players không
+        if (startingPlayers.isEmpty()) {
+            return;
+        }
+
+        // Yellow cards (more common)
+        if (Math.random() < 0.3) { // 30% chance
+            Player player = startingPlayers.get((int) (Math.random() * startingPlayers.size()));
             
-            // Tính toán winner bằng Java
-            match.winnerName = calculateWinner(match.teamAName, match.teamBName, 
-                                             match.teamAScore, match.teamBScore);
-            
-            matches.add(match);
-        }
-        
-        rs.close();
-        pstmt.close();
-        
-        // Sắp xếp bằng Java
-        matches.sort(new MatchDateComparator());
-        
-        return matches;
-    }
-    
-    /**
-     * Tính toán thống kê trận đấu cho một team bằng Java
-     */
-    public TeamMatchStats calculateTeamMatchStats(String teamName, int tournamentId) throws SQLException {
-        List<MatchResult> allMatches = getAllMatchesWithCalculatedResults(tournamentId);
-        
-        TeamMatchStats stats = new TeamMatchStats();
-        stats.teamName = teamName;
-        
-        // Tính toán bằng Java thay vì SQL
-        for (MatchResult match : allMatches) {
-            if (match.teamAName.equals(teamName) || match.teamBName.equals(teamName)) {
-                stats.totalMatches++;
-                
-                boolean isTeamA = match.teamAName.equals(teamName);
-                int teamScore = isTeamA ? match.teamAScore : match.teamBScore;
-                int opponentScore = isTeamA ? match.teamBScore : match.teamAScore;
-                
-                stats.goalsFor += teamScore;
-                stats.goalsAgainst += opponentScore;
-                
-                if (teamScore > opponentScore) {
-                    stats.wins++;
-                } else if (teamScore == opponentScore) {
-                    stats.draws++;
-                } else {
-                    stats.losses++;
-                }
-            }
-        }
-        
-        // Tính toán các chỉ số khác
-        stats.points = stats.wins * 3 + stats.draws * 1;
-        stats.goalDifference = stats.goalsFor - stats.goalsAgainst;
-        
-        return stats;
-    }
-    
-    /**
-     * Find highest scoring match using Java comparison
-     */
-    public MatchResult findHighestScoringMatch(int tournamentId) throws SQLException {
-        List<MatchResult> matches = getAllMatchesWithCalculatedResults(tournamentId);
-        
-        MatchResult highestScoringMatch = null;
-        int maxGoals = -1;
-        
-        // Tìm kiếm bằng Java thay vì MAX() trong SQL
-        for (MatchResult match : matches) {
-            int totalGoals = match.teamAScore + match.teamBScore;
-            if (totalGoals > maxGoals) {
-                maxGoals = totalGoals;
-                highestScoringMatch = match;
-            }
-        }
-        
-        return highestScoringMatch;
-    }
-    
-    /**
-     * Lấy tất cả trận đấu knockout và sắp xếp theo thứ tự vòng đấu
-     */
-    public List<MatchResult> getKnockoutMatchesSorted(int tournamentId) throws SQLException {
-        List<MatchResult> allMatches = getAllMatchesWithCalculatedResults(tournamentId);
-        
-        // Filter knockout matches using Java
-        List<MatchResult> knockoutMatches = new ArrayList<>();
-        for (MatchResult match : allMatches) {
-            if (!"GROUP".equals(match.matchType)) {
-                knockoutMatches.add(match);
-            }
-        }
-        
-        // Sắp xếp theo thứ tự vòng đấu bằng Java
-        knockoutMatches.sort(new KnockoutStageComparator());
-        
-        return knockoutMatches;
-    }
-    
-    /**
-     * Comparator để sắp xếp matches theo ngày
-     */
-    private static class MatchDateComparator implements Comparator<MatchResult> {
-        @Override
-        public int compare(MatchResult m1, MatchResult m2) {
-            if (m1.matchDate != null && m2.matchDate != null) {
-                int dateComparison = m1.matchDate.compareTo(m2.matchDate);
-                if (dateComparison != 0) {
-                    return dateComparison;
+            // Đảm bảo player có ID trước khi tạo card
+            if (player.getId() == 0) {
+                Optional<Integer> playerId = objectManager.getPlayerRepository().getPlayerId(
+                    player.getName(), team.getName(), team.getTournamentId());
+                if (playerId.isPresent()) {
+                    player.setId(playerId.get());
                 }
             }
             
-            // Nếu ngày bằng nhau hoặc null, sắp xếp theo ID
-            return Integer.compare(m1.id, m2.id);
+            int minute = (int) (Math.random() * 90) + 1;
+
+            Card yellowCard = objectManager.createCard(player, team, match, minute, Card.CardType.YELLOW);
+            match.addCard(player, team, "YELLOW");
         }
-    }
-    
-    /**
-     * Comparator để sắp xếp matches knockout theo thứ tự vòng đấu
-     */
-    private static class KnockoutStageComparator implements Comparator<MatchResult> {
-        private static final Map<String, Integer> STAGE_ORDER = Map.of(
-            "ROUND_16", 1,
-            "QUARTER", 2,
-            "SEMI", 3,
-            "THIRD_PLACE", 4,
-            "FINAL", 5
-        );
-        
-        @Override
-        public int compare(MatchResult m1, MatchResult m2) {
-            int stage1 = STAGE_ORDER.getOrDefault(m1.matchType, 0);
-            int stage2 = STAGE_ORDER.getOrDefault(m2.matchType, 0);
+
+        // Red cards (less common)
+        if (Math.random() < 0.05) { // 5% chance
+            Player player = startingPlayers.get((int) (Math.random() * startingPlayers.size()));
             
-            int stageComparison = Integer.compare(stage1, stage2);
-            if (stageComparison != 0) {
-                return stageComparison;
+            // Đảm bảo player có ID trước khi tạo card
+            if (player.getId() == 0) {
+                Optional<Integer> playerId = objectManager.getPlayerRepository().getPlayerId(
+                    player.getName(), team.getName(), team.getTournamentId());
+                if (playerId.isPresent()) {
+                    player.setId(playerId.get());
+                }
             }
             
-            // Nếu cùng vòng đấu, sắp xếp theo ngày
-            if (m1.matchDate != null && m2.matchDate != null) {
-                return m1.matchDate.compareTo(m2.matchDate);
+            int minute = (int) (Math.random() * 90) + 1;
+
+            Card redCard = objectManager.createCard(player, team, match, minute, Card.CardType.RED);
+            match.addCard(player, team, "RED");
+        }
+    }
+
+    /**
+     * Tạo substitutions cho team
+     */
+    private boolean generateSubstitutionsForTeam(Match match, Team team) throws Exception {
+        if (Math.random() < 0.7) { // 70% chance of substitutions
+            int maxSubstitutions = Math.min(3, team.getSubstitutePlayers().size()); // Tối đa 3 hoặc số substitute players
+            int substitutionCount = (int) (Math.random() * maxSubstitutions) + 1; // 1 đến maxSubstitutions
+
+            for (int i = 0; i < substitutionCount; i++) {
+                // Lấy danh sách players cập nhật sau mỗi substitution
+                List<Player> currentStartingPlayers = team.getStartingPlayers();
+                List<Player> currentSubstitutePlayers = team.getSubstitutePlayers();
+
+                // Kiểm tra còn players để thay không
+                if (currentStartingPlayers.isEmpty() || currentSubstitutePlayers.isEmpty()) {
+                    break; // Không còn players để thay
+                }
+
+                // Kiểm tra đã đạt giới hạn 3 substitutions chưa
+                if (match.getSubstitutionCount(team) >= 3) {
+                    break; // Đã đạt giới hạn
+                }
+
+                Player playerIn = currentSubstitutePlayers.get((int) (Math.random() * currentSubstitutePlayers.size()));
+                Player playerOut = currentStartingPlayers.get((int) (Math.random() * currentStartingPlayers.size()));
+                int minute = (int) (Math.random() * 45) + 45; // Second half
+
+                try {
+                    // Đảm bảo players có ID trước khi tạo substitution
+                    if (playerIn.getId() == 0) {
+                        // Lấy ID từ database
+                        Optional<Integer> playerInId = objectManager.getPlayerRepository().getPlayerId(
+                            playerIn.getName(), team.getName(), team.getTournamentId());
+                        if (playerInId.isPresent()) {
+                            playerIn.setId(playerInId.get());
+                        }
+                    }
+                    
+                    if (playerOut.getId() == 0) {
+                        // Lấy ID từ database
+                        Optional<Integer> playerOutId = objectManager.getPlayerRepository().getPlayerId(
+                            playerOut.getName(), team.getName(), team.getTournamentId());
+                        if (playerOutId.isPresent()) {
+                            playerOut.setId(playerOutId.get());
+                        }
+                    }
+
+                    objectManager.createSubstitution(match, team, playerIn, playerOut, minute);
+                    team.setSubstitutionCount(team.getSubstitutionCount() + 1);
+                    return true;
+                } catch (Exception e) {
+                    System.err.println("Lỗi tạo substitution: " + e.getMessage());
+                    continue;
+                }
             }
-            
-            return Integer.compare(m1.id, m2.id);
         }
+        return false;
     }
-    
+
     /**
-     * Inner class để lưu kết quả trận đấu
+     * Lấy match theo ID
      */
-    public static class MatchResult {
-        public int id;
-        public String teamAName;
-        public String teamBName;
-        public int teamAScore;
-        public int teamBScore;
-        public String matchType;
-        public String matchDate;
-        public String venue;
-        public String referee;
-        public String status;
-        public String groupName;
-        public String winnerName;
-        
-        @Override
-        public String toString() {
-            return String.format("%s %d - %d %s (%s)", 
-                teamAName, teamAScore, teamBScore, teamBName, 
-                winnerName != null ? "Winner: " + winnerName : "Draw");
-        }
+    public Optional<Match> getMatchById(int matchId) throws Exception {
+        return matchRepository.findById(matchId);
     }
-    
+
     /**
-     * Inner class để lưu thống kê trận đấu của team
+     * Lấy tất cả matches của tournament
      */
-    public static class TeamMatchStats {
-        public String teamName;
-        public int totalMatches;
-        public int wins;
-        public int draws;
-        public int losses;
-        public int goalsFor;
-        public int goalsAgainst;
-        public int goalDifference;
-        public int points;
-        
-        @Override
-        public String toString() {
-            return String.format("%s: %d matches, %d wins, %d draws, %d losses, %d points, GD: %d", 
-                teamName, totalMatches, wins, draws, losses, points, goalDifference);
-        }
+    public List<Match> getMatchesByTournament(int tournamentId) throws Exception {
+        return matchRepository.findByTournament(tournamentId);
+    }
+
+    /**
+     * Lấy matches theo team
+     */
+    public List<Match> getMatchesByTeam(String teamName, int tournamentId) throws Exception {
+        return matchRepository.findByTeam(teamName, tournamentId);
     }
 }

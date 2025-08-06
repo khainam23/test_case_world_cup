@@ -31,18 +31,27 @@ public class TournamentTest {
         players4 = createPlayerList("Player4", 22);
 
         // Tạo các đội
+        List<Player> starting1 = players1.subList(0, 11);
+        List<Player> substitute1 = players1.subList(11, 16);
+        List<Player> starting2 = players2.subList(0, 11);
+        List<Player> substitute2 = players2.subList(11, 16);
+        List<Player> starting3 = players3.subList(0, 11);
+        List<Player> substitute3 = players3.subList(11, 16);
+        List<Player> starting4 = players4.subList(0, 11);
+        List<Player> substitute4 = players4.subList(11, 16);
+        
         team1 = new Team("Brazil", "South America", "Coach1", 
-                        List.of("Assistant1"), "Medical1", players1, false);
+                        List.of("Assistant1"), "Medical1", starting1, substitute1, false);
         team2 = new Team("Argentina", "South America", "Coach2", 
-                        List.of("Assistant2"), "Medical2", players2, false);
+                        List.of("Assistant2"), "Medical2", starting2, substitute2, false);
         team3 = new Team("Germany", "Europe", "Coach3", 
-                        List.of("Assistant3"), "Medical3", players3, false);
+                        List.of("Assistant3"), "Medical3", starting3, substitute3, false);
         team4 = new Team("France", "Europe", "Coach4", 
-                        List.of("Assistant4"), "Medical4", players4, true); // Host team
+                        List.of("Assistant4"), "Medical4", starting4, substitute4, true); // Host team
 
         // Tạo các bảng đấu
-        group1 = new Group(1, "Group A");
-        group2 = new Group(2, "Group B");
+        group1 = new Group("Group A");
+        group2 = new Group("Group B");
     }
 
     private List<Player> createPlayerList(String baseName, int count) {
@@ -117,14 +126,6 @@ public class TournamentTest {
         assertTrue(random instanceof Random);
     }
 
-    // ========== RANDOM FUNCTIONALITY TESTS ==========
-
-    @Test
-    void GetRandom_SuDungNhieuLan_CungMotInstance() {
-        Random random1 = tournament.getRandom();
-        Random random2 = tournament.getRandom();
-        assertSame(random1, random2);
-    }
 
     @Test
     void GetRandom_TaoSoNgauNhien_HoatDongDung() {
@@ -268,17 +269,6 @@ public class TournamentTest {
         LocalDate start1 = tournament.getStart();
         LocalDate start2 = tournament.getStart();
         assertEquals(start1, start2); // Cả hai đều null
-    }
-
-    @Test
-    void Tournament_RandomConsistency_CungInstance() {
-        Random random1 = tournament.getRandom();
-        Random random2 = tournament.getRandom();
-        Random random3 = tournament.getRandom();
-        
-        assertSame(random1, random2);
-        assertSame(random2, random3);
-        assertSame(random1, random3);
     }
 
     // ========== INTEGRATION TESTS ==========

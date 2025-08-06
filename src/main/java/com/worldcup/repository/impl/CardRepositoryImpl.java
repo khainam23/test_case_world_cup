@@ -28,21 +28,18 @@ public class CardRepositoryImpl implements CardRepository {
         String sql = """
             INSERT INTO cards (match_id, player_id, team_id, card_type, minute)
             VALUES (?, 
-                    (SELECT p.id FROM players p JOIN teams t ON p.team_id = t.id 
-                     WHERE p.name = ? AND t.name = ? AND t.tournament_id = ?), 
-                    (SELECT id FROM teams WHERE name = ? AND tournament_id = ?), 
-                    ?, ?)
+                    ?, 
+                    ?, 
+                    ?, 
+                    ?)
         """;
         
         PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
         pstmt.setInt(1, card.getMatch().getId());
-        pstmt.setString(2, card.getPlayer().getName());
-        pstmt.setString(3, card.getTeam().getName());
-        pstmt.setInt(4, card.getTeam().getTournamentId());
-        pstmt.setString(5, card.getTeam().getName());
-        pstmt.setInt(6, card.getTeam().getTournamentId());
-        pstmt.setString(7, card.getType().getLabel().toUpperCase());
-        pstmt.setInt(8, card.getMinutes());
+        pstmt.setInt(2, card.getPlayer().getId());
+        pstmt.setInt(3, card.getTeam().getId());
+        pstmt.setString(4, card.getType().getLabel().toUpperCase());
+        pstmt.setInt(5, card.getMinutes());
         pstmt.executeUpdate();
         pstmt.close();
         

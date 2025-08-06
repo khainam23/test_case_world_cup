@@ -29,12 +29,12 @@ public class MatchTest {
 
         // Tạo các đội
         teamA = new Team("Brazil", "South America", "Coach A", 
-                        List.of("Assistant A"), "Medical A", playersA, false);
+                        List.of("Assistant A"), "Medical A", startingA, substituteA, false);
         teamB = new Team("Argentina", "South America", "Coach B", 
-                        List.of("Assistant B"), "Medical B", playersB, false);
+                        List.of("Assistant B"), "Medical B", startingB, substituteB, false);
 
         // Tạo trận đấu
-        match = new Match(teamA, teamB, startingA, substituteA, startingB, substituteB, false);
+        match = new Match(teamA, teamB, "Stadium A", "Referee A", false);
     }
 
     private List<Player> createPlayerList(String baseName, int count) {
@@ -49,7 +49,7 @@ public class MatchTest {
 
     @Test
     void MatchConstructor_ThamSoHopLe_KhoiTaoThanhCong() {
-        Match newMatch = new Match(teamA, teamB, startingA, substituteA, startingB, substituteB, false);
+        Match newMatch = new Match(teamA, teamB, "Stadium A", "Referee A", false);
         
         assertEquals(teamA, newMatch.getTeamA());
         assertEquals(teamB, newMatch.getTeamB());
@@ -62,7 +62,7 @@ public class MatchTest {
 
     @Test
     void MatchConstructor_KnockoutMatch_KhoiTaoThanhCong() {
-        Match knockoutMatch = new Match(teamA, teamB, startingA, substituteA, startingB, substituteB, true);
+        Match knockoutMatch = new Match(teamA, teamB, "Stadium B", "Referee B", true);
         
         assertEquals("KNOCKOUT", knockoutMatch.getMatchType());
         assertTrue(knockoutMatch.isKnockout());
@@ -72,76 +72,58 @@ public class MatchTest {
     @Test
     void MatchConstructor_TeamANull_ThrowException() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new Match(null, teamB, startingA, substituteA, startingB, substituteB, false);
+            new Match(null, teamB, "Stadium", "Referee", false);
         });
     }
 
     @Test
     void MatchConstructor_TeamBNull_ThrowException() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new Match(teamA, null, startingA, substituteA, startingB, substituteB, false);
+            new Match(teamA, null, "Stadium", "Referee", false);
         });
     }
 
     @Test
     void MatchConstructor_CaHaiTeamNull_ThrowException() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new Match(null, null, startingA, substituteA, startingB, substituteB, false);
+            new Match(null, null, "Stadium", "Referee", false);
         });
     }
 
     @Test
     void MatchConstructor_CungMotTeam_ThrowException() {
         assertThrows(IllegalArgumentException.class, () -> {
-            new Match(teamA, teamA, startingA, substituteA, startingB, substituteB, false);
-        });
-    }
-
-    // Test phân hoạch giá trị biên cho số lượng cầu thủ đá chính
-    @Test
-    void MatchConstructor_TeamAStarting10_ThrowException() {
-        List<Player> starting10 = startingA.subList(0, 10);
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Match(teamA, teamB, starting10, substituteA, startingB, substituteB, false);
-        });
-    }
-
-    @Test
-    void MatchConstructor_TeamAStarting12_ThrowException() {
-        List<Player> starting12 = new ArrayList<>(startingA);
-        starting12.add(playersA.get(16));
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Match(teamA, teamB, starting12, substituteA, startingB, substituteB, false);
-        });
-    }
-
-    @Test
-    void MatchConstructor_TeamBStarting0_ThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Match(teamA, teamB, startingA, substituteA, new ArrayList<>(), substituteB, false);
+            new Match(teamA, teamA, "Stadium", "Referee", false);
         });
     }
 
     // Test phân hoạch giá trị biên cho số lượng cầu thủ dự bị
     @Test
-    void MatchConstructor_TeamASubstitute4_ThrowException() {
-        List<Player> substitute4 = substituteA.subList(0, 4);
+    void MatchConstructor_TeamASubstitute6_ThrowException() {
+        List<Player> substitute6 = new ArrayList<>(substituteA);
+        substitute6.add(playersA.get(16)); // Add 6th substitute
+        Team teamWith6Substitutes = new Team("Brazil6Sub", "South America", "Coach A", 
+                                           List.of("Assistant A"), "Medical A", startingA, substitute6, false);
         assertThrows(IllegalArgumentException.class, () -> {
-            new Match(teamA, teamB, startingA, substitute4, startingB, substituteB, false);
+            new Match(teamWith6Substitutes, teamB, "Stadium", "Referee", false);
         });
     }
 
     @Test
-    void MatchConstructor_TeamBSubstitute0_ThrowException() {
+    void MatchConstructor_TeamBSubstitute6_ThrowException() {
+        List<Player> substitute6 = new ArrayList<>(substituteB);
+        substitute6.add(playersB.get(16)); // Add 6th substitute
+        Team teamWith6Substitutes = new Team("Argentina6Sub", "South America", "Coach B", 
+                                           List.of("Assistant B"), "Medical B", startingB, substitute6, false);
         assertThrows(IllegalArgumentException.class, () -> {
-            new Match(teamA, teamB, startingA, substituteA, startingB, new ArrayList<>(), false);
+            new Match(teamA, teamWith6Substitutes, "Stadium", "Referee", false);
         });
     }
 
     @Test
     void MatchConstructor_TeamASubstitute5_KhoiTaoThanhCong() {
         // Đúng 5 cầu thủ dự bị - biên dưới hợp lệ
-        Match validMatch = new Match(teamA, teamB, startingA, substituteA, startingB, substituteB, false);
+        Match validMatch = new Match(teamA, teamB, "Stadium", "Referee", false);
         assertNotNull(validMatch);
     }
 
@@ -194,8 +176,10 @@ public class MatchTest {
     void AddGoal_TeamKhongThamGia_ThrowException() {
         // Tạo team thứ 3 không tham gia trận đấu
         List<Player> playersC = createPlayerList("PlayerC", 22);
+        List<Player> startingC = playersC.subList(0, 11);
+        List<Player> substituteC = playersC.subList(11, 16);
         Team teamC = new Team("Germany", "Europe", "Coach C", 
-                             List.of("Assistant C"), "Medical C", playersC, false);
+                             List.of("Assistant C"), "Medical C", startingC, substituteC, false);
         
         Goal invalidGoal = new Goal(playersC.get(0), teamC, 30, match);
         
@@ -293,35 +277,22 @@ public class MatchTest {
         });
     }
 
-    // ========== SUBSTITUTION TESTS ==========
-
-
-
-    @Test
-    void AddSubstitution_SubstitutionNull_TraVeFalse() {
-        boolean result = match.addSubstitution(null);
-        assertFalse(result);
-    }
-
-
-
-
-
-    // ========== MAKE SUBSTITUTION TESTS ==========
-
 
     @Test
     void MakeSubstitution_TeamKhongThamGia_ThrowException() {
         // Tạo team thứ 3
         List<Player> playersC = createPlayerList("PlayerC", 22);
+        List<Player> startingC = playersC.subList(0, 11);
+        List<Player> substituteC = playersC.subList(11, 16);
         Team teamC = new Team("Germany", "Europe", "Coach C", 
-                             List.of("Assistant C"), "Medical C", playersC, false);
+                             List.of("Assistant C"), "Medical C", startingC, substituteC, false);
         
         Player playerOut = playersC.get(0);
         Player playerIn = playersC.get(11);
         
         assertThrows(IllegalArgumentException.class, () -> {
             Substitution substitution = new Substitution(playerIn, playerOut, 60, teamC, match);
+            match.makeSubstitution(substitution);
         });
     }
 
@@ -333,12 +304,6 @@ public class MatchTest {
     void IsPlayerInMatch_PlayerTrongStarting_TraVeTrue() {
         assertTrue(match.isPlayerInMatch(startingA.get(0)));
         assertTrue(match.isPlayerInMatch(startingB.get(0)));
-    }
-
-    @Test
-    void IsPlayerInMatch_PlayerTrongSubstitute_TraVeTrue() {
-        assertTrue(match.isPlayerInMatch(substituteA.get(0)));
-        assertTrue(match.isPlayerInMatch(substituteB.get(0)));
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.worldcup.model;
 
 import com.worldcup.repository.TeamRepository;
+
 import java.util.*;
 
 public class Team {
@@ -12,7 +13,7 @@ public class Team {
     private List<String> assistantCoaches;
     private String medicalStaff;
     private boolean isHost;
-    
+
     // Thống kê trận đấu - tương ứng với database columns
     private int points;
     private int goalDifference;
@@ -21,35 +22,30 @@ public class Team {
     private int wins;
     private int draws;
     private int losses;
-    
+
     // Thống kê thẻ và thay người - tương ứng với database columns
     private int yellowCards;
     private int redCards;
     private int substitutionCount;
-    
+
     // Thông tin bảng đấu
     private int groupId;
     private int tournamentId;
-    
+
     // Danh sách cầu thủ
     private List<Player> players;
-    private List<Player> startingPlayers = new ArrayList<>();
-    private List<Player> substitutePlayers = new ArrayList<>();
-    
+    private List<Player> startingPlayers;
+    private List<Player> substitutePlayers;
+
     private Random random = new Random();
-    
+
     // Repository for persistence operations
     private static TeamRepository teamRepository;
 
     public Team(String name, String region, String coach, List<String> assistantCoaches,
-                String medicalStaff, List<Player> players, boolean isHost) {
-
+                String medicalStaff, boolean isHost) {
         if (assistantCoaches.size() > 3) {
             throw new IllegalArgumentException("Tối đa 3 trợ lý huấn luyện viên.");
-        }
-
-        if (players.size() > 22) {
-            throw new IllegalArgumentException("Đội bóng có tối đa 22 cầu thủ.");
         }
 
         this.name = name;
@@ -57,9 +53,8 @@ public class Team {
         this.coach = coach;
         this.assistantCoaches = new ArrayList<>(assistantCoaches);
         this.medicalStaff = medicalStaff;
-        this.players = new ArrayList<>(players);
         this.isHost = isHost;
-        
+
         // Khởi tạo các thống kê
         this.points = 0;
         this.goalDifference = 0;
@@ -71,6 +66,10 @@ public class Team {
         this.yellowCards = 0;
         this.redCards = 0;
         this.substitutionCount = 0;
+
+        startingPlayers = new ArrayList<>();
+        substitutePlayers = new ArrayList<>();
+        players = new ArrayList<>();
     }
 
     public Team(String name, String region, String coach, List<String> assistantCoaches,
@@ -114,6 +113,7 @@ public class Team {
         this.redCards = 0;
         this.substitutionCount = 0;
     }
+
 
     // Getters
     public String getName() {
@@ -189,11 +189,11 @@ public class Team {
     }
 
     public List<Player> getStartingPlayers() {
-        return Collections.unmodifiableList(startingPlayers);
+        return startingPlayers;
     }
 
     public List<Player> getSubstitutePlayers() {
-        return Collections.unmodifiableList(substitutePlayers);
+        return substitutePlayers;
     }
 
     public void addStartingPlayer(Player player) {
@@ -210,6 +210,15 @@ public class Team {
     public boolean isContainPlayer(Player player) {
         return players.contains(player);
     }
+
+    public boolean isContainPlayerIn(Player player) {
+        return startingPlayers.contains(player);
+    }
+
+    public boolean isContainPlayerOut(Player player) {
+        return substitutePlayers.contains(player);
+    }
+
 
     // Getters và Setters cho các thuộc tính mới
     public int getId() {
@@ -283,7 +292,7 @@ public class Team {
         this.goalsFor += goalsFor;
         this.goalsAgainst += goalsAgainst;
         this.goalDifference = this.goalsFor - this.goalsAgainst;
-        
+
         if (goalsFor > goalsAgainst) {
             this.wins++;
             this.points += 3;
@@ -299,7 +308,7 @@ public class Team {
     /**
      * Reset tất cả thống kê về 0
      */
-    public void resetStatistics() {
+    public void reset() {
         this.points = 0;
         this.goalDifference = 0;
         this.goalsFor = 0;
@@ -311,11 +320,12 @@ public class Team {
         this.redCards = 0;
         this.substitutionCount = 0;
     }
-    
+
     /**
      * Thực hiện thay người
+     *
      * @param playerOut Cầu thủ ra
-     * @param playerIn Cầu thủ vào
+     * @param playerIn  Cầu thủ vào
      * @return true nếu thành công, false nếu không thể thay người
      */
     public boolean performSubstitution(Player playerOut, Player playerIn) {
@@ -329,162 +339,47 @@ public class Team {
         if (!playerIn.isEligible() || !playerOut.isEligible()) {
             return false; // Cầu thủ không đủ điều kiện
         }
-        
+
         // Thực hiện thay người
         startingPlayers.remove(playerOut);
         substitutePlayers.remove(playerIn);
         startingPlayers.add(playerIn);
         substitutePlayers.add(playerOut);
-        
+
         // Tăng số lần thay người
         this.substitutionCount++;
-        
+
         return true;
     }
-    
+
     /**
      * Kiểm tra xem có thể thay người không
      */
     public boolean canPerformSubstitution(Player playerOut, Player playerIn) {
-        return startingPlayers.contains(playerOut) && 
-               substitutePlayers.contains(playerIn) &&
-               playerIn.isEligible() && 
-               playerOut.isEligible();
+        return startingPlayers.contains(playerOut) &&
+                substitutePlayers.contains(playerIn) &&
+                playerIn.isEligible() &&
+                playerOut.isEligible();
     }
-    
+
     /**
      * Xóa cầu thủ khỏi danh sách đá chính (dùng khi bị thẻ đỏ)
      */
     public boolean removeStartingPlayer(Player player) {
         return startingPlayers.remove(player);
     }
-    
+
     /**
      * Xóa cầu thủ khỏi danh sách dự bị
      */
     public boolean removeSubstitutePlayer(Player player) {
         return substitutePlayers.remove(player);
     }
-    
-    /**
-     * Lấy danh sách starting players có thể modify (dùng cho Match class)
-     */
-    public List<Player> getModifiableStartingPlayers() {
-        return startingPlayers;
-    }
-    
-    /**
-     * Lấy danh sách substitute players có thể modify (dùng cho Match class)
-     */
-    public List<Player> getModifiableSubstitutePlayers() {
-        return substitutePlayers;
-    }
-    
-    /**
-     * Prepare lineup for match by handling suspended players
-     * Automatically replace suspended starting players with substitutes
-     */
-    public void prepareLineupForMatch() {
-        // First, ensure we have exactly 11 starting players by filling gaps if needed
-        ensureFullStartingLineup();
-        
-        List<Player> suspendedStarters = new ArrayList<>();
-        
-        // Find suspended starting players
-        for (Player player : startingPlayers) {
-            if (player.isSuspended()) {
-                suspendedStarters.add(player);
-            }
-        }
-        
-        // Replace suspended players with available substitutes
-        for (Player suspendedPlayer : suspendedStarters) {
-            Player replacement = findReplacementPlayer(suspendedPlayer);
-            if (replacement != null) {
-                // Move suspended player to substitutes
-                startingPlayers.remove(suspendedPlayer);
-                substitutePlayers.add(suspendedPlayer);
-                
-                // Move replacement to starting lineup
-                substitutePlayers.remove(replacement);
-                startingPlayers.add(replacement);
-                
-                
-            } else {
-                System.out.println("   ⚠️ No replacement found for suspended player: " + suspendedPlayer.getName());
-            }
-        }
-        
-        // Final check
-        if (startingPlayers.size() != 11) {
-            System.out.println("   ❌ " + name + " has " + startingPlayers.size() + " starting players after preparation");
-        }
-    }
-    
-    /**
-     * Ensure team has exactly 11 starting players by moving substitutes if needed
-     */
-    private void ensureFullStartingLineup() {
-        while (startingPlayers.size() < 11 && !substitutePlayers.isEmpty()) {
-            // Find an eligible substitute to promote
-            Player substitute = null;
-            for (Player player : substitutePlayers) {
-                if (player.isPlayerEligible() && !player.isSuspended()) {
-                    substitute = player;
-                    break;
-                }
-            }
-            
-            if (substitute != null) {
-                substitutePlayers.remove(substitute);
-                startingPlayers.add(substitute);
-                System.out.println("   ⬆️ " + substitute.getName() + " promoted to starting lineup");
-            } else {
-                break; // No eligible substitutes available
-            }
-        }
-    }
-    
-    /**
-     * Find a suitable replacement for a suspended player
-     * Prioritize by position match
-     */
-    private Player findReplacementPlayer(Player suspendedPlayer) {
-        String position = suspendedPlayer.getPosition();
-        
-        // First try to find same position player
-        for (Player substitute : substitutePlayers) {
-            if (!substitute.isSuspended() && substitute.isPlayerEligible() && 
-                substitute.getPosition().equals(position)) {
-                return substitute;
-            }
-        }
-        
-        // If no same position, find any eligible substitute
-        for (Player substitute : substitutePlayers) {
-            if (!substitute.isSuspended() && substitute.isPlayerEligible()) {
-                return substitute;
-            }
-        }
-        
-        return null;
-    }
-    
-    /**
-     * Reduce suspension for all players after a match
-     */
-    public void processSuspensionsAfterMatch() {
-        for (Player player : players) {
-            if (player.isSuspended()) {
-                player.reduceSuspension();
-            }
-        }
-    }
 
     @Override
     public String toString() {
-        return String.format("Team{name='%s', points=%d, goalDiff=%d, record=%d-%d-%d}", 
-                           name, points, goalDifference, wins, draws, losses);
+        return String.format("Team{name='%s', points=%d, goalDiff=%d, record=%d-%d-%d}",
+                name, points, goalDifference, wins, draws, losses);
     }
 
     @Override
@@ -492,8 +387,8 @@ public class Team {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         Team team = (Team) obj;
-        return Objects.equals(name, team.name) && 
-               Objects.equals(region, team.region);
+        return Objects.equals(name, team.name) &&
+                Objects.equals(region, team.region);
     }
 
     @Override
@@ -508,14 +403,11 @@ public class Team {
     public void setSubstitutePlayers(List<Player> substitutePlayers) {
         this.substitutePlayers = substitutePlayers;
     }
-    
-    /**
-     * Set repository for persistence operations
-     */
+
     public static void setTeamRepository(TeamRepository repository) {
         teamRepository = repository;
     }
-    
+
     /**
      * Save this team to database using repository
      */
@@ -524,7 +416,7 @@ public class Team {
             teamRepository.save(this);
         }
     }
-    
+
     /**
      * Update this team in database using repository
      */
@@ -533,7 +425,7 @@ public class Team {
             teamRepository.update(this);
         }
     }
-    
+
     /**
      * Load team with players from database
      */
@@ -542,5 +434,9 @@ public class Team {
             // Repository sẽ load players và set vào team
             // Implementation sẽ được xử lý trong repository
         }
+    }
+
+    public void setPlayers(List<Player> players) {
+        this.players = players;
     }
 }

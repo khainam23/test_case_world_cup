@@ -75,4 +75,9 @@ public interface PlayerRepository {
      * Lấy ID của player
      */
     Optional<Integer> getPlayerId(String playerName, String teamName, int tournamentId) throws SQLException;
+    
+    /**
+     * Cập nhật trạng thái is_starting của player
+     */
+    void updateStartingStatus(int playerId, boolean isStarting) throws SQLException;
 }

@@ -342,6 +342,17 @@ public class PlayerRepositoryImpl implements PlayerRepository {
         return result;
     }
     
+    @Override
+    public void updateStartingStatus(int playerId, boolean isStarting) throws SQLException {
+        String sql = "UPDATE players SET is_starting = ? WHERE id = ?";
+        
+        PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
+        pstmt.setBoolean(1, isStarting);
+        pstmt.setInt(2, playerId);
+        pstmt.executeUpdate();
+        pstmt.close();
+    }
+    
     /**
      * Tạo Player object từ ResultSet
      */

@@ -1,12 +1,14 @@
 package com.worldcup.model;
 
+import java.util.Objects;
+
 public class Substitution {
     private int id;
-    private final Match match;
-    private final Team team;
-    private final Player playerIn;
-    private final Player playerOut;
-    private final int minute;
+    private Match match;
+    private Team team;
+    private Player playerIn;
+    private Player playerOut;
+    private int minute;
 
 
     public Substitution(Player playerIn, Player playerOut, int minute, Team team, Match match) {
@@ -28,13 +30,6 @@ public class Substitution {
         this.minute = minute;
         this.team = team;
         this.match = match;
-
-        // Thực hiện thay người trong Match
-        boolean success = match.addSubstitution(this);
-        if (!success) {
-            throw new IllegalArgumentException("Không thể thực hiện thay người: " + 
-                                             playerIn.getName() + " vào thay " + playerOut.getName());
-        }
     }
 
     public Player getInPlayer() {
@@ -66,6 +61,19 @@ public class Substitution {
                 ", team=" + team.getName() +
                 ", match between " + match.getTeamA().getName() + " and " + match.getTeamB().getName() +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Substitution)) return false;
+        Substitution that = (Substitution) o;
+        return id == that.id && minute == that.minute && Objects.equals(match, that.match) && Objects.equals(team, that.team) && Objects.equals(playerIn, that.playerIn) && Objects.equals(playerOut, that.playerOut);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, match, team, playerIn, playerOut, minute);
     }
 
     public void setId(int substitutionId) {
