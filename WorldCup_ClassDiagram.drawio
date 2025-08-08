@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2024-01-01T00:00:00.000Z" agent="5.0" etag="xxx" version="22.1.16" type="device">
+  <diagram name="World Cup Management System" id="c4acf3e9-155e-7222-9cf6-157b1a14988f">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Tournament Class -->
+        <mxCell id="tournament" value="Tournament&#xa;&#xa;- id: int&#xa;- year: int&#xa;- name: String&#xa;- host: Team&#xa;- start: LocalDate&#xa;- end: LocalDate&#xa;- champion: Team&#xa;- runnerUp: Team&#xa;- thirdPlace: List&lt;Team&gt;&#xa;- teamList: List&lt;Team&gt;&#xa;- groupList: List&lt;Group&gt;&#xa;- players: List&lt;Player&gt;&#xa;&#xa;+ Tournament(year: int, host: Team, name: String, start: LocalDate, end: LocalDate)&#xa;+ getId(): int&#xa;+ getYear(): int&#xa;+ getName(): String&#xa;+ getHost(): Team&#xa;+ getChampion(): Team&#xa;+ getTeamList(): List&lt;Team&gt;&#xa;+ getGroupList(): List&lt;Group&gt;&#xa;+ setChampion(champion: Team): void&#xa;+ setRunnerUp(runnerUp: Team): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="320" height="380" as="geometry" />
+        </mxCell>
+
+        <!-- Team Class -->
+        <mxCell id="team" value="Team&#xa;&#xa;- id: int&#xa;- name: String&#xa;- region: String&#xa;- coach: String&#xa;- assistantCoaches: List&lt;String&gt;&#xa;- medicalStaff: String&#xa;- isHost: boolean&#xa;- points: int&#xa;- goalDifference: int&#xa;- goalsFor: int&#xa;- goalsAgainst: int&#xa;- wins: int&#xa;- draws: int&#xa;- losses: int&#xa;- yellowCards: int&#xa;- redCards: int&#xa;- substitutionCount: int&#xa;- groupId: int&#xa;- tournamentId: int&#xa;- players: List&lt;Player&gt;&#xa;- startingPlayers: List&lt;Player&gt;&#xa;- substitutePlayers: List&lt;Player&gt;&#xa;&#xa;+ Team(name: String, region: String, coach: String, assistantCoaches: List&lt;String&gt;, medicalStaff: String, isHost: boolean)&#xa;+ getName(): String&#xa;+ getRegion(): String&#xa;+ getPoints(): int&#xa;+ getGoalDifference(): int&#xa;+ getPlayers(): List&lt;Player&gt;&#xa;+ updateMatchStatistics(goalsFor: int, goalsAgainst: int): void&#xa;+ performSubstitution(playerOut: Player, playerIn: Player): boolean&#xa;+ reset(): void&#xa;+ save(): void&#xa;+ update(): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="40" width="380" height="520" as="geometry" />
+        </mxCell>
+
+        <!-- Player Class -->
+        <mxCell id="player" value="Player&#xa;&#xa;- id: int&#xa;- name: String&#xa;- jerseyNumber: int&#xa;- position: String&#xa;- teamId: int&#xa;- isStarting: boolean&#xa;- yellowCards: int&#xa;- redCards: int&#xa;- goals: int&#xa;- assists: int&#xa;- minutesPlayed: int&#xa;- isEligible: boolean&#xa;- eligibleMatches: int&#xa;&#xa;+ Player(name: String, jerseyNumber: int, position: String)&#xa;+ getName(): String&#xa;+ getJerseyNumber(): int&#xa;+ getPosition(): String&#xa;+ getGoals(): int&#xa;+ scoreGoal(): void&#xa;+ receiveYellowCard(): void&#xa;+ receiveRedCard(): void&#xa;+ isSentOff(): boolean&#xa;+ isEligible(): boolean" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="40" width="280" height="340" as="geometry" />
+        </mxCell>
+
+        <!-- Group Class -->
+        <mxCell id="group" value="Group&#xa;&#xa;- id: int&#xa;- name: String&#xa;- teams: List&lt;Team&gt;&#xa;- matches: List&lt;Match&gt;&#xa;&#xa;+ Group(name: String)&#xa;+ Group(name: String, teams: List&lt;Team&gt;, matches: List&lt;Match&gt;)&#xa;+ getName(): String&#xa;+ getTeams(): List&lt;Team&gt;&#xa;+ getMatches(): List&lt;Match&gt;&#xa;+ addTeam(team: Team): void&#xa;+ addMatch(match: Match): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="320" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Match Class -->
+        <mxCell id="match" value="Match&#xa;&#xa;- id: int&#xa;- teamAId: int&#xa;- teamBId: int&#xa;- teamA: Team&#xa;- teamB: Team&#xa;- teamAScore: int&#xa;- teamBScore: int&#xa;- matchType: String&#xa;- matchDate: String&#xa;- venue: String&#xa;- referee: String&#xa;- winnerId: Integer&#xa;- isKnockout: boolean&#xa;- isFinished: boolean&#xa;- goals: List&lt;Goal&gt;&#xa;- substitutions: List&lt;Substitution&gt;&#xa;- sentOffPlayers: Set&lt;Player&gt;&#xa;&#xa;+ Match(teamA: Team, teamB: Team, venue: String, referee: String, isKnockout: boolean)&#xa;+ getTeamA(): Team&#xa;+ getTeamB(): Team&#xa;+ getTeamAScore(): int&#xa;+ getTeamBScore(): int&#xa;+ addGoal(goal: Goal): void&#xa;+ addCard(player: Player, team: Team, cardType: String): void&#xa;+ addSubstitution(substitution: Substitution): boolean&#xa;+ updateMatchResult(teamAScore: int, teamBScore: int): void&#xa;+ getWinnerTeam(): Team&#xa;+ endMatch(): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="620" width="380" height="420" as="geometry" />
+        </mxCell>
+
+        <!-- Goal Class -->
+        <mxCell id="goal" value="Goal&#xa;&#xa;- id: int&#xa;- player: Player&#xa;- team: Team&#xa;- minute: int&#xa;- match: Match&#xa;- type: GoalType&#xa;&#xa;+ Goal(player: Player, team: Team, minute: int, match: Match)&#xa;+ getPlayer(): Player&#xa;+ getTeam(): Team&#xa;+ getMinute(): int&#xa;+ getMatch(): Match&#xa;+ getType(): GoalType&#xa;+ save(): void&#xa;+ update(): void&#xa;&#xa;&lt;&lt;enumeration&gt;&gt;&#xa;GoalType&#xa;NORMAL&#xa;PENALTY&#xa;OWN_GOAL&#xa;HEADER&#xa;FREE_KICK&#xa;LONG_SHOT" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="420" width="280" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- Card Class -->
+        <mxCell id="card" value="Card&#xa;&#xa;- id: int&#xa;- player: Player&#xa;- team: Team&#xa;- match: Match&#xa;- cardType: String&#xa;- minute: int&#xa;&#xa;+ Card(player: Player, team: Team, match: Match, cardType: String, minute: int)&#xa;+ getPlayer(): Player&#xa;+ getTeam(): Team&#xa;+ getMatch(): Match&#xa;+ getCardType(): String&#xa;+ getMinute(): int&#xa;+ save(): void&#xa;+ update(): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="740" width="280" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Substitution Class -->
+        <mxCell id="substitution" value="Substitution&#xa;&#xa;- id: int&#xa;- outPlayer: Player&#xa;- inPlayer: Player&#xa;- team: Team&#xa;- match: Match&#xa;- minute: int&#xa;&#xa;+ Substitution(outPlayer: Player, inPlayer: Player, team: Team, match: Match, minute: int)&#xa;+ getOutPlayer(): Player&#xa;+ getInPlayer(): Player&#xa;+ getTeam(): Team&#xa;+ getMatch(): Match&#xa;+ getMinute(): int&#xa;+ save(): void&#xa;+ update(): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="740" width="320" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Service Layer -->
+        <mxCell id="tournamentService" value="&lt;&lt;Service&gt;&gt;&#xa;TournamentService&#xa;&#xa;+ createTournament(): Tournament&#xa;+ getTournamentById(id: int): Tournament&#xa;+ getAllTournaments(): List&lt;Tournament&gt;&#xa;+ updateTournament(tournament: Tournament): void&#xa;+ deleteTournament(id: int): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1000" width="280" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="teamService" value="&lt;&lt;Service&gt;&gt;&#xa;TeamService&#xa;&#xa;+ createTeam(): Team&#xa;+ getTeamById(id: int): Team&#xa;+ getAllTeams(): List&lt;Team&gt;&#xa;+ updateTeam(team: Team): void&#xa;+ deleteTeam(id: int): void&#xa;+ getTeamStatistics(teamId: int): TeamStats" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="360" y="1000" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="matchService" value="&lt;&lt;Service&gt;&gt;&#xa;MatchService&#xa;&#xa;+ createMatch(): Match&#xa;+ getMatchById(id: int): Match&#xa;+ getAllMatches(): List&lt;Match&gt;&#xa;+ updateMatch(match: Match): void&#xa;+ deleteMatch(id: int): void&#xa;+ simulateMatch(match: Match): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="680" y="1000" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="playerService" value="&lt;&lt;Service&gt;&gt;&#xa;PlayerService&#xa;&#xa;+ createPlayer(): Player&#xa;+ getPlayerById(id: int): Player&#xa;+ getAllPlayers(): List&lt;Player&gt;&#xa;+ updatePlayer(player: Player): void&#xa;+ deletePlayer(id: int): void&#xa;+ getPlayerStatistics(playerId: int): PlayerStats" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="1000" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Repository Layer -->
+        <mxCell id="teamRepository" value="&lt;&lt;Repository&gt;&gt;&#xa;TeamRepository&#xa;&#xa;+ save(team: Team): void&#xa;+ findById(id: int): Team&#xa;+ findAll(): List&lt;Team&gt;&#xa;+ update(team: Team): void&#xa;+ delete(id: int): void&#xa;+ findByTournamentId(tournamentId: int): List&lt;Team&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1200" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="matchRepository" value="&lt;&lt;Repository&gt;&gt;&#xa;MatchRepository&#xa;&#xa;+ save(match: Match): void&#xa;+ findById(id: int): Match&#xa;+ findAll(): List&lt;Match&gt;&#xa;+ update(match: Match): void&#xa;+ delete(id: int): void&#xa;+ findByTeamId(teamId: int): List&lt;Match&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="360" y="1200" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="playerRepository" value="&lt;&lt;Repository&gt;&gt;&#xa;PlayerRepository&#xa;&#xa;+ save(player: Player): void&#xa;+ findById(id: int): Player&#xa;+ findAll(): List&lt;Player&gt;&#xa;+ update(player: Player): void&#xa;+ delete(id: int): void&#xa;+ findByTeamId(teamId: int): List&lt;Player&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="1200" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goalRepository" value="&lt;&lt;Repository&gt;&gt;&#xa;GoalRepository&#xa;&#xa;+ save(goal: Goal): void&#xa;+ findById(id: int): Goal&#xa;+ findAll(): List&lt;Goal&gt;&#xa;+ update(goal: Goal): void&#xa;+ delete(id: int): void&#xa;+ findByMatchId(matchId: int): List&lt;Goal&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="1200" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Database Manager -->
+        <mxCell id="databaseManager" value="&lt;&lt;Singleton&gt;&gt;&#xa;DatabaseManager&#xa;&#xa;- instance: DatabaseManager&#xa;- connection: Connection&#xa;&#xa;+ getInstance(): DatabaseManager&#xa;+ getConnection(): Connection&#xa;+ closeConnection(): void&#xa;+ executeQuery(sql: String): ResultSet&#xa;+ executeUpdate(sql: String): int&#xa;+ createTables(): void" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1400" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Relationships -->
+        <!-- Tournament -> Team (1 to many) -->
+        <mxCell id="tournament-team" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="tournament" target="team">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="360" y="200" as="sourcePoint" />
+            <mxPoint x="420" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tournament-team-label" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="tournament-team">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tournament-team-label2" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="tournament-team">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Tournament -> Group (1 to many) -->
+        <mxCell id="tournament-group" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="tournament" target="group">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="200" y="420" as="sourcePoint" />
+            <mxPoint x="200" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tournament-group-label" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="tournament-group">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tournament-group-label2" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="tournament-group">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Team -> Player (1 to many) -->
+        <mxCell id="team-player" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="team" target="player">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="800" y="200" as="sourcePoint" />
+            <mxPoint x="860" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="team-player-label" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="team-player">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="team-player-label2" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="team-player">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Group -> Team (many to many) -->
+        <mxCell id="group-team" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="group" target="team">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="360" y="580" as="sourcePoint" />
+            <mxPoint x="420" y="560" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-team-label" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="group-team">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="group-team-label2" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="group-team">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Group -> Match (1 to many) -->
+        <mxCell id="group-match" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="group" target="match">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="360" y="620" as="sourcePoint" />
+            <mxPoint x="420" y="680" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-match-label" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="group-match">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="group-match-label2" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="group-match">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Match -> Team (many to 2) -->
+        <mxCell id="match-team" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="match" target="team">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="610" y="620" as="sourcePoint" />
+            <mxPoint x="610" y="560" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="match-team-label" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="match-team">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="match-team-label2" value="2" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="match-team">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Match -> Goal (1 to many) -->
+        <mxCell id="match-goal" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="match" target="goal">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="800" y="700" as="sourcePoint" />
+            <mxPoint x="860" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="match-goal-label" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="match-goal">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="match-goal-label2" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="match-goal">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Match -> Card (1 to many) -->
+        <mxCell id="match-card" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="match" target="card">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="800" y="900" as="sourcePoint" />
+            <mxPoint x="860" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="match-card-label" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="match-card">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="match-card-label2" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="match-card">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Match -> Substitution (1 to many) -->
+        <mxCell id="match-substitution" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="match" target="substitution">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="420" y="900" as="sourcePoint" />
+            <mxPoint x="360" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="match-substitution-label" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="match-substitution">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="match-substitution-label2" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="match-substitution">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Goal -> Player (many to 1) -->
+        <mxCell id="goal-player" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="goal" target="player">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="1000" y="420" as="sourcePoint" />
+            <mxPoint x="1000" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="goal-player-label" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="goal-player">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="goal-player-label2" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="goal-player">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Card -> Player (many to 1) -->
+        <mxCell id="card-player" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="card" target="player">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="1000" y="740" as="sourcePoint" />
+            <mxPoint x="1000" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card-player-label" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="card-player">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="card-player-label2" value="1" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="card-player">
+          <mxGeometry x="1" relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Substitution -> Player (many to 2) -->
+        <mxCell id="substitution-player" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="substitution" target="player">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="360" y="800" as="sourcePoint" />
+            <mxPoint x="860" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="substitution-player-label" value="*" style="resizable=0;html=1;whiteSpace=wrap;align=right;verticalAlign=bottom;" connectable="0" vertex="1" parent="substitution-player">
+          <mxGeometry x="-1" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="substitution-player-label2" value="2" style="resizable=0;html=1;whiteSpace=wrap;align=left;verticalAlign=bottom;" connectable="0" vertex="1" parent="substitution-player">
+          <mxGeometry x="1" relative="1" as="geometry">
+            <mxPoint x="-10" y="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Service -> Repository dependencies -->
+        <mxCell id="teamService-teamRepository" style="endArrow=open;endFill=0;endSize=12;html=1;rounded=0;dashed=1;" edge="1" parent="1" source="teamService" target="teamRepository">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="360" y="1140" as="sourcePoint" />
+            <mxPoint x="280" y="1200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="teamService-teamRepository-label" value="&lt;&lt;uses&gt;&gt;" style="resizable=0;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="teamService-teamRepository">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="matchService-matchRepository" style="endArrow=open;endFill=0;endSize=12;html=1;rounded=0;dashed=1;" edge="1" parent="1" source="matchService" target="matchRepository">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="680" y="1140" as="sourcePoint" />
+            <mxPoint x="600" y="1200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="matchService-matchRepository-label" value="&lt;&lt;uses&gt;&gt;" style="resizable=0;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="matchService-matchRepository">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="playerService-playerRepository" style="endArrow=open;endFill=0;endSize=12;html=1;rounded=0;dashed=1;" edge="1" parent="1" source="playerService" target="playerRepository">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="1000" y="1140" as="sourcePoint" />
+            <mxPoint x="920" y="1200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="playerService-playerRepository-label" value="&lt;&lt;uses&gt;&gt;" style="resizable=0;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="playerService-playerRepository">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Repository -> DatabaseManager dependencies -->
+        <mxCell id="teamRepository-databaseManager" style="endArrow=open;endFill=0;endSize=12;html=1;rounded=0;dashed=1;" edge="1" parent="1" source="teamRepository" target="databaseManager">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="320" y="1340" as="sourcePoint" />
+            <mxPoint x="520" y="1400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="teamRepository-databaseManager-label" value="&lt;&lt;uses&gt;&gt;" style="resizable=0;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="teamRepository-databaseManager">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="matchRepository-databaseManager" style="endArrow=open;endFill=0;endSize=12;html=1;rounded=0;dashed=1;" edge="1" parent="1" source="matchRepository" target="databaseManager">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="500" y="1340" as="sourcePoint" />
+            <mxPoint x="600" y="1400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="matchRepository-databaseManager-label" value="&lt;&lt;uses&gt;&gt;" style="resizable=0;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="matchRepository-databaseManager">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="playerRepository-databaseManager" style="endArrow=open;endFill=0;endSize=12;html=1;rounded=0;dashed=1;" edge="1" parent="1" source="playerRepository" target="databaseManager">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="820" y="1340" as="sourcePoint" />
+            <mxPoint x="720" y="1400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="playerRepository-databaseManager-label" value="&lt;&lt;uses&gt;&gt;" style="resizable=0;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="playerRepository-databaseManager">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goalRepository-databaseManager" style="endArrow=open;endFill=0;endSize=12;html=1;rounded=0;dashed=1;" edge="1" parent="1" source="goalRepository" target="databaseManager">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="1000" y="1340" as="sourcePoint" />
+            <mxPoint x="800" y="1400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="goalRepository-databaseManager-label" value="&lt;&lt;uses&gt;&gt;" style="resizable=0;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="goalRepository-databaseManager">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
